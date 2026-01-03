@@ -124,15 +124,20 @@ struct WindowRow: View {
         Button(action: action) {
             HStack(spacing: 12) {
                 // App icon
-                if let app = window.owningApplication,
-                   let bundleID = app.bundleIdentifier,
-                   let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) {
-                    AsyncImage(url: appURL) { image in
-                        image.resizable()
-                    } placeholder: {
-                        Image(systemName: "app.fill")
+                if let app = window.owningApplication {
+                    let bundleID = app.bundleIdentifier
+                    if let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) {
+                        AsyncImage(url: appURL) { image in
+                            image.resizable()
+                        } placeholder: {
+                            Image(systemName: "app.fill")
+                        }
+                        .frame(width: 32, height: 32)
+                    } else {
+                        Image(systemName: "macwindow")
+                            .font(.title)
+                            .frame(width: 32, height: 32)
                     }
-                    .frame(width: 32, height: 32)
                 } else {
                     Image(systemName: "macwindow")
                         .font(.title)
@@ -153,11 +158,10 @@ struct WindowRow: View {
 
                 Spacer()
 
-                if let frame = window.frame {
-                    Text("\(Int(frame.width)) x \(Int(frame.height))")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                }
+                let frame = window.frame
+                Text("\(Int(frame.width)) x \(Int(frame.height))")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
@@ -208,7 +212,3 @@ struct DisplayRow: View {
     }
 }
 
-#Preview {
-    WindowPickerView()
-        .environmentObject(AppState())
-}

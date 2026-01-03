@@ -222,6 +222,8 @@ enum RecordingError: LocalizedError {
     case noContentSelected
     case permissionDenied
     case recordingFailed(String)
+    case noActiveRecording
+    case outputURLNotSet
 
     var errorDescription: String? {
         switch self {
@@ -231,6 +233,10 @@ enum RecordingError: LocalizedError {
             return "Screen recording permission denied"
         case .recordingFailed(let reason):
             return "Recording failed: \(reason)"
+        case .noActiveRecording:
+            return "No active recording to stop"
+        case .outputURLNotSet:
+            return "Output URL not configured"
         }
     }
 }

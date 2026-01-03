@@ -129,7 +129,7 @@ final class ScreenRecorder: NSObject, ObservableObject {
 
     func stopRecording() async throws -> URL {
         guard isRecording, let stream = stream else {
-            throw RecordingError.recordingFailed("No active recording")
+            throw RecordingError.noActiveRecording
         }
 
         try await stream.stopCapture()
@@ -146,7 +146,7 @@ final class ScreenRecorder: NSObject, ObservableObject {
         }
 
         guard let url = outputURL else {
-            throw RecordingError.recordingFailed("No output URL")
+            throw RecordingError.outputURLNotSet
         }
 
         // Clean up

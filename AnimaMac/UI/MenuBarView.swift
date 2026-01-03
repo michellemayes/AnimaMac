@@ -229,8 +229,3 @@ struct PulsingModifier: ViewModifier {
     }
 }
 
-#Preview {
-    MenuBarView()
-        .environmentObject(AppState())
-        .frame(width: 280)
-}

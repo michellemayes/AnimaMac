@@ -225,7 +225,11 @@ struct SelectionOverlayView: View {
     }
 
     private func showOverlay() async {
-        guard let display = appState.selectedDisplay ?? (try? await ScreenRecorder.availableDisplays().first) else {
+        var display = appState.selectedDisplay
+        if display == nil {
+            display = try? await ScreenRecorder.availableDisplays().first
+        }
+        guard let display else {
             return
         }
 

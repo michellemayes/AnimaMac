@@ -181,7 +181,3 @@ struct AboutTab: View {
     }
 }
 
-#Preview {
-    SettingsView()
-        .environmentObject(AppState())
-}

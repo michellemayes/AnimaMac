@@ -43,10 +43,22 @@ struct CaptureConfiguration: Codable, Equatable {
 
     func applyTo(_ configuration: SCStreamConfiguration, for window: SCWindow) {
         let scaleFactor = quality.scaleFactor
-        if let frame = window.frame {
-            configuration.width = Int(frame.width * scaleFactor)
-            configuration.height = Int(frame.height * scaleFactor)
+        let frame = window.frame
+        
+        // Check for valid frame dimensions
+        guard frame.width > 0 && frame.height > 0 else {
+            // Default dimensions if frame dimensions are invalid
+            configuration.width = 1920
+            configuration.height = 1080
+            configuration.minimumFrameInterval = CMTime(value: 1, timescale: CMTimeScale(framesPerSecond))
+            configuration.showsCursor = showsCursor
+            configuration.pixelFormat = kCVPixelFormatType_32BGRA
+            configuration.queueDepth = 5
+            return
         }
+        
+        configuration.width = Int(frame.width * scaleFactor)
+        configuration.height = Int(frame.height * scaleFactor)
         configuration.minimumFrameInterval = CMTime(value: 1, timescale: CMTimeScale(framesPerSecond))
         configuration.showsCursor = showsCursor
         configuration.pixelFormat = kCVPixelFormatType_32BGRA
