@@ -5,11 +5,44 @@ actor FFmpegManager {
 
     private let binaryURL = FileManager.ffmpegBinaryURL
 
-    // FFmpeg download source (static builds for macOS)
-    private let downloadURL = URL(string: "https://evermeet.cx/ffmpeg/getrelease/ffmpeg/zip")!
+    // System FFmpeg locations (Homebrew)
+    private let systemFFmpegPaths = [
+        "/opt/homebrew/bin/ffmpeg",  // ARM64 Homebrew
+        "/usr/local/bin/ffmpeg",      // Intel Homebrew
+        "/usr/bin/ffmpeg"             // System (unlikely)
+    ]
+
+    // FFmpeg download sources by architecture
+    private var downloadURL: URL {
+        #if arch(arm64)
+        // ARM64 static build
+        return URL(string: "https://www.osxexperts.net/ffmpeg7arm.zip")!
+        #else
+        // Intel static build
+        return URL(string: "https://evermeet.cx/ffmpeg/getrelease/ffmpeg/zip")!
+        #endif
+    }
+
+    /// Returns the path to use for FFmpeg execution
+    var executableURL: URL {
+        // Prefer system FFmpeg if available
+        for path in systemFFmpegPaths {
+            if FileManager.default.isExecutableFile(atPath: path) {
+                return URL(fileURLWithPath: path)
+            }
+        }
+        return binaryURL
+    }
 
     var isAvailable: Bool {
-        FileManager.default.fileExists(atPath: binaryURL.path)
+        // Check system FFmpeg first
+        for path in systemFFmpegPaths {
+            if FileManager.default.isExecutableFile(atPath: path) {
+                return true
+            }
+        }
+        // Then check bundled FFmpeg
+        return FileManager.default.fileExists(atPath: binaryURL.path)
     }
 
     // MARK: - Download
@@ -23,7 +56,11 @@ actor FFmpegManager {
     }
 
     private func downloadFFmpeg() async throws {
-        print("Downloading FFmpeg...")
+        #if arch(arm64)
+        print("Downloading FFmpeg for Apple Silicon...")
+        #else
+        print("Downloading FFmpeg for Intel...")
+        #endif
 
         // Download zip file
         let (tempZipURL, _) = try await URLSession.shared.download(from: downloadURL)
@@ -81,9 +118,10 @@ actor FFmpegManager {
     func run(arguments: [String]) async throws -> (output: String, error: String) {
         try await ensureAvailable()
 
+        let ffmpegPath = executableURL
         return try await withCheckedThrowingContinuation { continuation in
             let process = Process()
-            process.executableURL = binaryURL
+            process.executableURL = ffmpegPath
             process.arguments = arguments
 
             let outputPipe = Pipe()
@@ -121,8 +159,9 @@ actor FFmpegManager {
 
         // For progress, we'll just run the command and estimate progress
         // FFmpeg's -progress option can interfere with filter_complex
+        let ffmpegPath = executableURL
         let process = Process()
-        process.executableURL = binaryURL
+        process.executableURL = ffmpegPath
         process.arguments = arguments
 
         let outputPipe = Pipe()
