@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MenuBarView: View {
     @EnvironmentObject var appState: AppState
+    @Environment(\.openSettings) private var openSettingsAction
 
     var body: some View {
         VStack(spacing: 0) {
@@ -147,11 +148,7 @@ struct MenuBarView: View {
     }
 
     private func openSettings() {
-        if #available(macOS 14.0, *) {
-            NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-        } else {
-            NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
-        }
+        openSettingsAction()
     }
 
     // MARK: - Helpers

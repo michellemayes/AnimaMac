@@ -1,5 +1,6 @@
 import SwiftUI
 import ScreenCaptureKit
+import AppKit
 
 @MainActor
 final class AppState: ObservableObject {
@@ -35,6 +36,7 @@ final class AppState: ObservableObject {
     private(set) var screenRecorder: ScreenRecorder?
     private(set) var gifExporter: GIFExporter?
     private(set) var recordingLibrary: RecordingLibrary?
+    private var overlayController: OverlayWindowController?
 
     private var recordingTimer: Timer?
 
@@ -48,6 +50,7 @@ final class AppState: ObservableObject {
         recordingLibrary = RecordingLibrary()
         gifExporter = GIFExporter()
         screenRecorder = ScreenRecorder()
+        overlayController = OverlayWindowController()
 
         // Load existing recordings
         if let library = recordingLibrary {
@@ -60,11 +63,86 @@ final class AppState: ObservableObject {
     func startAreaSelection() {
         isSelectingArea = true
         isSelectingWindow = false
+
+        Task {
+            await showAreaSelectionOverlay()
+        }
+    }
+
+    private func showAreaSelectionOverlay() async {
+        // Get the main display
+        guard let display = try? await ScreenRecorder.availableDisplays().first else {
+            print("No displays available")
+            cancelSelection()
+            return
+        }
+
+        selectedDisplay = display
+
+        overlayController?.showOverlay(
+            for: display,
+            onComplete: { [weak self] rect, display in
+                guard let self else { return }
+                self.selectedRect = rect
+                self.selectedDisplay = display
+                self.isSelectingArea = false
+
+                Task {
+                    do {
+                        try await self.startRecording()
+                    } catch {
+                        print("Failed to start recording: \(error)")
+                        self.lastError = error
+                        self.showingError = true
+                    }
+                }
+            },
+            onCancel: { [weak self] in
+                self?.cancelSelection()
+            }
+        )
     }
 
     func startWindowSelection() {
         isSelectingWindow = true
         isSelectingArea = false
+
+        Task {
+            await showWindowPicker()
+        }
+    }
+
+    private func showWindowPicker() async {
+        do {
+            let windows = try await ScreenRecorder.availableWindows()
+            if windows.isEmpty {
+                print("No windows available")
+                cancelSelection()
+                return
+            }
+
+            // Show window picker panel
+            await MainActor.run {
+                let panel = NSPanel(
+                    contentRect: NSRect(x: 0, y: 0, width: 400, height: 500),
+                    styleMask: [.titled, .closable, .resizable],
+                    backing: .buffered,
+                    defer: false
+                )
+                panel.title = "Select Window to Record"
+                panel.center()
+
+                let pickerView = WindowPickerView()
+                    .environmentObject(self)
+
+                panel.contentView = NSHostingView(rootView: pickerView)
+                panel.makeKeyAndOrderFront(nil)
+                NSApp.activate(ignoringOtherApps: true)
+            }
+        } catch {
+            print("Failed to get windows: \(error)")
+            cancelSelection()
+        }
     }
 
     func cancelSelection() {
