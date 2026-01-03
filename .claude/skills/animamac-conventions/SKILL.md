@@ -119,6 +119,14 @@ The MenuBarView displays an error view with "Open System Settings" button for pe
 
 6. **Video bitrate**: Higher bitrate (20Mbps) produces better source for GIF conversion.
 
+7. **FFmpeg architecture**: Must download correct binary for CPU architecture:
+   - ARM64 (Apple Silicon): Use `osxexperts.net/ffmpeg7arm.zip`
+   - x86_64 (Intel): Use `evermeet.cx/ffmpeg/getrelease/ffmpeg/zip`
+   - FFmpegManager uses `#if arch(arm64)` to select correct URL
+   - Delete old binary if "bad CPU type" error: `rm ~/Library/Application\ Support/AnimaMac/ffmpeg`
+
+8. **System FFmpeg**: FFmpegManager checks for Homebrew FFmpeg first (`/opt/homebrew/bin/ffmpeg` or `/usr/local/bin/ffmpeg`) before using bundled binary.
+
 ## Testing Checklist
 
 When modifying recording/export:
