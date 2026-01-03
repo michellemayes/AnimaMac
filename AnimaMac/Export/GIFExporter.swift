@@ -10,50 +10,61 @@ final class GIFExporter {
         settings: ExportSettings,
         progressHandler: @escaping (Double) -> Void
     ) async throws {
+        print("[GIFExporter] Starting export: \(videoURL.path) -> \(outputURL.path)")
+
         // Get video duration for progress tracking
         let asset = AVAsset(url: videoURL)
         let duration = try await asset.load(.duration).seconds
+        print("[GIFExporter] Video duration: \(duration)s")
 
         // Build FFmpeg filter chain for high-quality GIF
         let filterChain = buildFilterChain(settings: settings)
+        print("[GIFExporter] Filter chain: \(filterChain)")
 
         let arguments = [
             "-y",  // Overwrite output
             "-i", videoURL.path,
-            "-vf", filterChain,
+            "-filter_complex", filterChain,
             "-loop", "\(settings.loopCount)",
             outputURL.path
         ]
 
-        try await ffmpeg.runWithProgress(
-            arguments: arguments,
-            duration: duration,
-            progressHandler: progressHandler
-        )
+        print("[GIFExporter] Running FFmpeg with args: \(arguments.joined(separator: " "))")
+
+        do {
+            try await ffmpeg.runWithProgress(
+                arguments: arguments,
+                duration: duration,
+                progressHandler: progressHandler
+            )
+            print("[GIFExporter] Export completed successfully")
+        } catch {
+            print("[GIFExporter] Export failed: \(error)")
+            throw error
+        }
     }
 
     private func buildFilterChain(settings: ExportSettings) -> String {
         // Two-pass palette generation for high quality GIFs
-        // fps -> scale -> split -> palettegen -> paletteuse
+        // Input -> fps -> scale -> split -> palettegen + paletteuse
 
-        var filters: [String] = []
+        // Build the filter graph
+        // [0:v] is the input video stream
+        var filterGraph = "[0:v]fps=\(settings.fps)"
 
-        // Frame rate
-        filters.append("fps=\(settings.fps)")
+        // Scale with Lanczos for quality (use -2 to ensure even dimensions)
+        filterGraph += ",scale=\(settings.maxWidth):-2:flags=lanczos"
 
-        // Scale with Lanczos for quality
-        filters.append("scale=\(settings.maxWidth):-1:flags=lanczos")
+        // Split for palette generation
+        filterGraph += ",split[s0][s1];"
 
-        // Split stream for palette generation
-        filters.append("split[s0][s1]")
+        // Generate palette from one stream
+        filterGraph += "[s0]palettegen=max_colors=\(settings.maxColors):stats_mode=diff[p];"
 
-        // Generate palette
-        filters.append("[s0]palettegen=max_colors=\(settings.maxColors):stats_mode=diff[p]")
+        // Apply palette to the other stream
+        filterGraph += "[s1][p]paletteuse=dither=\(settings.dithering.ffmpegValue):diff_mode=rectangle"
 
-        // Apply palette with dithering
-        filters.append("[s1][p]paletteuse=dither=\(settings.dithering.ffmpegValue):diff_mode=rectangle")
-
-        return filters.joined(separator: ";")
+        return filterGraph
     }
 
     // MARK: - Quick Export (no progress)
@@ -68,7 +79,7 @@ final class GIFExporter {
         let arguments = [
             "-y",
             "-i", videoURL.path,
-            "-vf", filterChain,
+            "-filter_complex", filterChain,
             "-loop", "\(settings.loopCount)",
             outputURL.path
         ]

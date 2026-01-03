@@ -119,29 +119,37 @@ actor FFmpegManager {
     ) async throws {
         try await ensureAvailable()
 
+        // For progress, we'll just run the command and estimate progress
+        // FFmpeg's -progress option can interfere with filter_complex
         let process = Process()
         process.executableURL = binaryURL
-        process.arguments = ["-progress", "pipe:1", "-nostats"] + arguments
+        process.arguments = arguments
 
         let outputPipe = Pipe()
         let errorPipe = Pipe()
         process.standardOutput = outputPipe
         process.standardError = errorPipe
 
-        // Read progress output
-        outputPipe.fileHandleForReading.readabilityHandler = { handle in
+        // Parse stderr for progress (FFmpeg outputs progress info to stderr)
+        var lastProgress: Double = 0
+        errorPipe.fileHandleForReading.readabilityHandler = { handle in
             let data = handle.availableData
             guard !data.isEmpty else { return }
 
             if let output = String(data: data, encoding: .utf8) {
-                // Parse progress from FFmpeg output
-                // Format: out_time_ms=1234567
-                let lines = output.components(separatedBy: "\n")
-                for line in lines {
-                    if line.hasPrefix("out_time_ms=") {
-                        let timeStr = line.replacingOccurrences(of: "out_time_ms=", with: "")
-                        if let timeMs = Double(timeStr) {
-                            let progress = min(1.0, timeMs / 1_000_000 / duration)
+                // Parse time from FFmpeg stderr output
+                // Format: frame=  123 fps= 30 q=28.0 size=    1234kB time=00:00:05.00 ...
+                if let timeRange = output.range(of: "time=\\d{2}:\\d{2}:\\d{2}\\.\\d{2}", options: .regularExpression) {
+                    let timeStr = String(output[timeRange]).replacingOccurrences(of: "time=", with: "")
+                    let components = timeStr.split(separator: ":")
+                    if components.count == 3,
+                       let hours = Double(components[0]),
+                       let minutes = Double(components[1]),
+                       let seconds = Double(components[2]) {
+                        let currentTime = hours * 3600 + minutes * 60 + seconds
+                        let progress = min(1.0, currentTime / duration)
+                        if progress > lastProgress {
+                            lastProgress = progress
                             Task { @MainActor in
                                 progressHandler(progress)
                             }
@@ -151,15 +159,26 @@ actor FFmpegManager {
             }
         }
 
+        print("[FFmpeg] Starting with args: \(arguments.joined(separator: " "))")
+
         try process.run()
         process.waitUntilExit()
 
-        outputPipe.fileHandleForReading.readabilityHandler = nil
+        errorPipe.fileHandleForReading.readabilityHandler = nil
 
-        if process.terminationStatus != 0 {
+        let exitCode = process.terminationStatus
+        print("[FFmpeg] Exited with code: \(exitCode)")
+
+        if exitCode != 0 {
             let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
-            let error = String(data: errorData, encoding: .utf8) ?? "Unknown error"
-            throw FFmpegError.executionFailed(error)
+            let errorStr = String(data: errorData, encoding: .utf8) ?? "Unknown error"
+            print("[FFmpeg] Error output: \(errorStr)")
+            throw FFmpegError.executionFailed(errorStr)
+        }
+
+        // Signal completion
+        Task { @MainActor in
+            progressHandler(1.0)
         }
     }
 }

@@ -2,7 +2,6 @@ import Foundation
 import ScreenCaptureKit
 import AVFoundation
 
-@MainActor
 final class ScreenRecorder: NSObject, ObservableObject {
     private var stream: SCStream?
     private var assetWriter: AVAssetWriter?
@@ -12,8 +11,13 @@ final class ScreenRecorder: NSObject, ObservableObject {
     private var outputURL: URL?
     private var isRecording = false
     private var startTime: CMTime?
+    private var frameCount: Int = 0
 
+    // Use a dedicated serial queue for video writing to avoid frame drops
     private let videoQueue = DispatchQueue(label: "com.animamac.videoqueue", qos: .userInteractive)
+
+    // Lock for thread-safe access to writer components
+    private let writerLock = NSLock()
 
     // MARK: - Content Discovery
 
@@ -91,8 +95,10 @@ final class ScreenRecorder: NSObject, ObservableObject {
             AVVideoWidthKey: configuration.width,
             AVVideoHeightKey: configuration.height,
             AVVideoCompressionPropertiesKey: [
-                AVVideoAverageBitRateKey: 10_000_000,
-                AVVideoProfileLevelKey: AVVideoProfileLevelH264HighAutoLevel
+                AVVideoAverageBitRateKey: 20_000_000,  // Higher bitrate for better quality
+                AVVideoMaxKeyFrameIntervalKey: 30,
+                AVVideoProfileLevelKey: AVVideoProfileLevelH264HighAutoLevel,
+                AVVideoAllowFrameReorderingKey: false  // Reduce latency
             ]
         ]
 
@@ -183,19 +189,36 @@ extension ScreenRecorder: SCStreamOutput {
 
         let presentationTime = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
 
-        // Use Task to access main actor-isolated properties
-        Task { @MainActor in
-            guard let videoInput = videoInput, videoInput.isReadyForMoreMediaData else { return }
-            
-            // Calculate relative time
-            if startTime == nil {
-                startTime = presentationTime
+        // Access shared state through MainActor synchronously to avoid frame drops
+        // We need to capture the writer components safely
+        var localVideoInput: AVAssetWriterInput?
+        var localAdaptor: AVAssetWriterInputPixelBufferAdaptor?
+        var localStartTime: CMTime?
+        var needsStartTime = false
+
+        // Synchronously access main actor state
+        DispatchQueue.main.sync {
+            localVideoInput = self.videoInput
+            localAdaptor = self.pixelBufferAdaptor
+            localStartTime = self.startTime
+            needsStartTime = self.startTime == nil
+
+            if needsStartTime {
+                self.startTime = presentationTime
+                localStartTime = presentationTime
             }
-
-            let relativeTime = CMTimeSubtract(presentationTime, startTime!)
-
-            // Append pixel buffer
-            pixelBufferAdaptor?.append(imageBuffer, withPresentationTime: relativeTime)
         }
+
+        guard let videoInput = localVideoInput,
+              let adaptor = localAdaptor,
+              let start = localStartTime,
+              videoInput.isReadyForMoreMediaData else {
+            return
+        }
+
+        let relativeTime = CMTimeSubtract(presentationTime, start)
+
+        // Append pixel buffer on the video queue (we're already on it)
+        adaptor.append(imageBuffer, withPresentationTime: relativeTime)
     }
 }
