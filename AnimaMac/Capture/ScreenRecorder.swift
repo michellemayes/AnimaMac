@@ -1,6 +1,7 @@
 import Foundation
 import ScreenCaptureKit
 import AVFoundation
+import CoreGraphics
 
 final class ScreenRecorder: NSObject, ObservableObject {
     private var stream: SCStream?
@@ -19,10 +20,47 @@ final class ScreenRecorder: NSObject, ObservableObject {
     // Lock for thread-safe access to writer components
     private let writerLock = NSLock()
 
+    // MARK: - Permissions
+
+    /// Check if screen recording permission has been granted
+    static var hasScreenRecordingPermission: Bool {
+        CGPreflightScreenCaptureAccess()
+    }
+
+    /// Request screen recording permission. Returns true if granted.
+    @discardableResult
+    static func requestScreenRecordingPermission() -> Bool {
+        CGRequestScreenCaptureAccess()
+    }
+
+    /// Ensure we have permission, requesting if needed. Throws if denied.
+    static func ensurePermission() async throws {
+        if hasScreenRecordingPermission {
+            return
+        }
+
+        // Request permission - this will show the system dialog
+        let granted = requestScreenRecordingPermission()
+
+        if !granted {
+            // Give the user a moment to respond to the dialog
+            // The first request always returns false even if user clicks "allow"
+            // We need to wait and check again
+            try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+
+            // Check again after potential user interaction
+            if !hasScreenRecordingPermission {
+                throw ScreenRecorderError.permissionDenied
+            }
+        }
+    }
+
     // MARK: - Content Discovery
 
     static func availableContent() async throws -> SCShareableContent {
-        try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+        // Check permission first
+        try await ensurePermission()
+        return try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
     }
 
     static func availableDisplays() async throws -> [SCDisplay] {
@@ -220,5 +258,21 @@ extension ScreenRecorder: SCStreamOutput {
 
         // Append pixel buffer on the video queue (we're already on it)
         adaptor.append(imageBuffer, withPresentationTime: relativeTime)
+    }
+}
+
+// MARK: - Errors
+
+enum ScreenRecorderError: LocalizedError {
+    case permissionDenied
+    case noDisplaysAvailable
+
+    var errorDescription: String? {
+        switch self {
+        case .permissionDenied:
+            return "Screen recording permission was denied. Please enable it in System Settings > Privacy & Security > Screen Recording."
+        case .noDisplaysAvailable:
+            return "No displays available for recording."
+        }
     }
 }

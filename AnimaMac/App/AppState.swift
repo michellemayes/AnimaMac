@@ -70,14 +70,25 @@ final class AppState: ObservableObject {
     }
 
     private func showAreaSelectionOverlay() async {
-        // Get the main display
-        guard let display = try? await ScreenRecorder.availableDisplays().first else {
-            print("No displays available")
+        // Get the main display (this will check permissions)
+        let display: SCDisplay
+        do {
+            guard let firstDisplay = try await ScreenRecorder.availableDisplays().first else {
+                print("No displays available")
+                lastError = ScreenRecorderError.noDisplaysAvailable
+                showingError = true
+                cancelSelection()
+                return
+            }
+            display = firstDisplay
+            selectedDisplay = display
+        } catch {
+            print("Failed to get displays: \(error)")
+            lastError = error
+            showingError = true
             cancelSelection()
             return
         }
-
-        selectedDisplay = display
 
         overlayController?.showOverlay(
             for: display,
@@ -291,6 +302,15 @@ final class AppState: ObservableObject {
     func revealInFinder(_ recording: Recording) {
         let url = recording.exportedGIFURL ?? recording.sourceVideoURL
         NSWorkspace.shared.selectFile(url.path, inFileViewerRootedAtPath: "")
+    }
+
+    // MARK: - System Settings
+
+    func openScreenRecordingSettings() {
+        // Open System Settings > Privacy & Security > Screen Recording
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") {
+            NSWorkspace.shared.open(url)
+        }
     }
 }
 

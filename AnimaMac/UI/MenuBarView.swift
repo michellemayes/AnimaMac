@@ -6,7 +6,9 @@ struct MenuBarView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if appState.isRecording {
+            if appState.showingError, let error = appState.lastError {
+                errorView(error: error)
+            } else if appState.isRecording {
                 recordingView
             } else if appState.isExporting {
                 exportingView
@@ -15,6 +17,40 @@ struct MenuBarView: View {
             }
         }
         .frame(width: 280)
+    }
+
+    // MARK: - Error View
+
+    private func errorView(error: Error) -> some View {
+        VStack(spacing: 12) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.largeTitle)
+                .foregroundStyle(.yellow)
+
+            Text("Permission Required")
+                .font(.headline)
+
+            Text(error.localizedDescription)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+
+            VStack(spacing: 8) {
+                Button(action: { appState.openScreenRecordingSettings() }) {
+                    Label("Open System Settings", systemImage: "gear")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+
+                Button("Dismiss") {
+                    appState.showingError = false
+                    appState.lastError = nil
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+            }
+        }
+        .padding()
     }
 
     // MARK: - Recording View
