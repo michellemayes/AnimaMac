@@ -1,6 +1,10 @@
-# AnimaMac
+<p align="center">
+  <img src="AnimaMac/Resources/Assets.xcassets/AppIcon.appiconset/app-icon.svg" width="128" height="128" alt="AnimaMac Logo">
+</p>
 
-A native macOS GIF recorder inspired by [Gifox](https://gifox.app). Record your screen to high-quality GIFs with no time limits.
+<h1 align="center">AnimaMac</h1>
+
+<p align="center">A native macOS GIF recorder inspired by <a href="https://gifox.app">Gifox</a>. Record your screen to high-quality GIFs with no time limits.</p>
 
 ![macOS 14+](https://img.shields.io/badge/macOS-14%2B-blue)
 ![Swift 5.9+](https://img.shields.io/badge/Swift-5.9%2B-orange)
