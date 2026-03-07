@@ -9,9 +9,7 @@ struct AnimaMacApp: App {
             MenuBarView()
                 .environmentObject(appState)
         } label: {
-            Image(systemName: appState.isRecording ? "record.circle.fill" : "record.circle")
-                .symbolRenderingMode(.palette)
-                .foregroundStyle(appState.isRecording ? .red : .primary, .primary)
+            Image(appState.isRecording ? "MenuBarIconRecording" : "MenuBarIcon")
         }
         .menuBarExtraStyle(.window)
 

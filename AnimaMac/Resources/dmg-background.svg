@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 400" width="660" height="400">
+  <defs>
+    <linearGradient id="dmgBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFF8F0"/>
+      <stop offset="100%" stop-color="#FFE8D0"/>
+    </linearGradient>
+    <linearGradient id="arrowGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#FF8C42"/>
+      <stop offset="100%" stop-color="#E85D26"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="660" height="400" fill="url(#dmgBg)"/>
+
+  <!-- Subtle pattern dots -->
+  <g opacity="0.06">
+    <circle cx="40" cy="40" r="3" fill="#C94420"/>
+    <circle cx="80" cy="40" r="3" fill="#C94420"/>
+    <circle cx="120" cy="40" r="3" fill="#C94420"/>
+    <circle cx="160" cy="40" r="3" fill="#C94420"/>
+    <circle cx="200" cy="40" r="3" fill="#C94420"/>
+    <circle cx="240" cy="40" r="3" fill="#C94420"/>
+    <circle cx="280" cy="40" r="3" fill="#C94420"/>
+    <circle cx="320" cy="40" r="3" fill="#C94420"/>
+    <circle cx="360" cy="40" r="3" fill="#C94420"/>
+    <circle cx="400" cy="40" r="3" fill="#C94420"/>
+    <circle cx="440" cy="40" r="3" fill="#C94420"/>
+    <circle cx="480" cy="40" r="3" fill="#C94420"/>
+    <circle cx="520" cy="40" r="3" fill="#C94420"/>
+    <circle cx="560" cy="40" r="3" fill="#C94420"/>
+    <circle cx="600" cy="40" r="3" fill="#C94420"/>
+    <circle cx="640" cy="40" r="3" fill="#C94420"/>
+  </g>
+
+  <!-- Arrow pointing from app icon area to Applications folder area -->
+  <path d="M275 200 L385 200" stroke="url(#arrowGrad)" stroke-width="4" stroke-dasharray="12 6" fill="none" stroke-linecap="round"/>
+  <polygon points="390,200 375,190 375,210" fill="#E85D26"/>
+
+  <!-- Small red panda decorating bottom-left corner -->
+  <g transform="translate(30, 340) scale(0.4)">
+    <!-- Mini panda sitting -->
+    <ellipse cx="30" cy="60" rx="25" ry="20" fill="#C94420"/>
+    <ellipse cx="15" cy="30" rx="10" ry="12" fill="#C94420"/>
+    <ellipse cx="45" cy="30" rx="10" ry="12" fill="#C94420"/>
+    <ellipse cx="15" cy="30" rx="5" ry="6" fill="#FFB88C"/>
+    <ellipse cx="45" cy="30" rx="5" ry="6" fill="#FFB88C"/>
+    <circle cx="30" cy="50" r="20" fill="#C94420"/>
+    <ellipse cx="30" cy="55" rx="14" ry="13" fill="#FFF5E6"/>
+    <circle cx="24" cy="48" r="3.5" fill="#3D2B1F"/>
+    <circle cx="36" cy="48" r="3.5" fill="#3D2B1F"/>
+    <circle cx="25.5" cy="47" r="1.2" fill="white"/>
+    <circle cx="37.5" cy="47" r="1.2" fill="white"/>
+    <ellipse cx="30" cy="55" rx="3" ry="2.2" fill="#3D2B1F"/>
+    <!-- Tail -->
+    <ellipse cx="58" cy="70" rx="18" ry="8" fill="#C94420" transform="rotate(-30 58 70)"/>
+    <path d="M52 65 Q60 58 68 65" stroke="#8B2500" stroke-width="2" fill="none" opacity="0.5"/>
+    <path d="M56 70 Q64 63 72 70" stroke="#8B2500" stroke-width="2" fill="none" opacity="0.5"/>
+  </g>
+
+  <!-- Small paw prints trailing across bottom -->
+  <g opacity="0.08" fill="#C94420">
+    <g transform="translate(100, 370)">
+      <circle cx="0" cy="0" r="4"/>
+      <circle cx="-4" cy="-6" r="2"/>
+      <circle cx="0" cy="-7" r="2"/>
+      <circle cx="4" cy="-6" r="2"/>
+    </g>
+    <g transform="translate(140, 365)">
+      <circle cx="0" cy="0" r="4"/>
+      <circle cx="-4" cy="-6" r="2"/>
+      <circle cx="0" cy="-7" r="2"/>
+      <circle cx="4" cy="-6" r="2"/>
+    </g>
+    <g transform="translate(180, 372)">
+      <circle cx="0" cy="0" r="4"/>
+      <circle cx="-4" cy="-6" r="2"/>
+      <circle cx="0" cy="-7" r="2"/>
+      <circle cx="4" cy="-6" r="2"/>
+    </g>
+    <g transform="translate(560, 370)">
+      <circle cx="0" cy="0" r="4"/>
+      <circle cx="-4" cy="-6" r="2"/>
+      <circle cx="0" cy="-7" r="2"/>
+      <circle cx="4" cy="-6" r="2"/>
+    </g>
+    <g transform="translate(600, 365)">
+      <circle cx="0" cy="0" r="4"/>
+      <circle cx="-4" cy="-6" r="2"/>
+      <circle cx="0" cy="-7" r="2"/>
+      <circle cx="4" cy="-6" r="2"/>
+    </g>
+  </g>
+
+  <!-- "Drag to install" text area -->
+  <text x="330" y="300" text-anchor="middle" font-family="-apple-system, Helvetica Neue, sans-serif" font-size="14" fill="#C94420" opacity="0.6" font-weight="500">Drag to Applications</text>
+</svg>

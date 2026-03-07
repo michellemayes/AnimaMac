@@ -13,7 +13,7 @@ A native macOS GIF recorder inspired by [Gifox](https://gifox.app). Record your 
 - **Window Recording** — Capture specific application windows
 - **High-Quality GIFs** — FFmpeg-based encoding with two-pass palette optimization
 - **Quality Presets** — Small, Medium, Large, and Original quality options
-- **Menubar App** — Lives in your menu bar, no dock icon clutter
+- **Menubar App** — Lives in your menu bar with a cute red panda icon, no dock icon clutter
 - **Auto-Export** — Automatically converts recordings to GIF
 - **Clipboard Copy** — GIF copied to clipboard after export
 
@@ -49,7 +49,7 @@ open AnimaMac.xcodeproj
 
 ### Recording
 
-1. Click the record icon in the menu bar
+1. Click the red panda icon in the menu bar
 2. Choose **Record Area** or **Record Window**
 3. For area recording: drag to select the region, release to start
 4. For window recording: select from the list of available windows
@@ -84,6 +84,12 @@ AnimaMac/
 │   ├── Recording.swift        # Recording model
 │   ├── RecordingLibrary.swift # JSON persistence
 │   └── FileManager+AnimaMac.swift
+├── Resources/
+│   ├── Assets.xcassets/
+│   │   ├── AppIcon.appiconset/    # Red panda app icon
+│   │   ├── MenuBarIcon.imageset/  # Menu bar icon (normal)
+│   │   └── MenuBarIconRecording.imageset/ # Menu bar icon (recording)
+│   └── dmg-background.svg         # DMG installer background
 └── UI/
     ├── MenuBarView.swift
     ├── RecordingOverlay.swift
