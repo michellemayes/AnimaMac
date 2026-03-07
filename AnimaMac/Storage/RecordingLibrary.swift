@@ -3,8 +3,8 @@ import Foundation
 final class RecordingLibrary {
     private let libraryURL: URL
 
-    init() {
-        libraryURL = FileManager.animaMacDirectory.appendingPathComponent("library.json")
+    init(libraryURL: URL? = nil) {
+        self.libraryURL = libraryURL ?? FileManager.animaMacDirectory.appendingPathComponent("library.json")
     }
 
     // MARK: - CRUD Operations
@@ -57,8 +57,12 @@ final class RecordingLibrary {
     func deleteAll() {
         let recordings = loadRecordings()
         for recording in recordings {
-            delete(recording)
+            try? FileManager.default.removeItem(at: recording.sourceVideoURL)
+            if let gifURL = recording.exportedGIFURL {
+                try? FileManager.default.removeItem(at: gifURL)
+            }
         }
+        persist([])
     }
 
     // MARK: - Persistence
