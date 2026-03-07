@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FF9F5A"/>
+      <stop offset="100%" stop-color="#E85D26"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background rounded square -->
+  <rect width="1024" height="1024" rx="228" ry="228" fill="url(#bg)"/>
+
+  <!-- Same panda as menu bar, scaled from 18x18 to fit ~900x900 centered -->
+  <!-- Scale factor: ~50x, offset to center in icon -->
+  <!-- Original viewBox 0 0 18 18 → mapped to ~62,62 to 962,962 (900x900 area) -->
+  <g transform="translate(62, 62) scale(50)">
+    <!-- Left ear -->
+    <ellipse cx="4.5" cy="3.5" rx="2.8" ry="3" fill="#C94420"/>
+    <!-- Right ear -->
+    <ellipse cx="13.5" cy="3.5" rx="2.8" ry="3" fill="#C94420"/>
+    <!-- Inner left ear -->
+    <ellipse cx="4.5" cy="3.5" rx="1.5" ry="1.6" fill="#FFB88C"/>
+    <!-- Inner right ear -->
+    <ellipse cx="13.5" cy="3.5" rx="1.5" ry="1.6" fill="#FFB88C"/>
+    <!-- Head -->
+    <ellipse cx="9" cy="10" rx="6.5" ry="6" fill="#C94420"/>
+    <!-- Face (lighter area) -->
+    <ellipse cx="9" cy="10.5" rx="5" ry="4.8" fill="#FFF5E6"/>
+    <!-- Cheek marks - left -->
+    <ellipse cx="5.5" cy="10" rx="1.8" ry="1.2" fill="#C94420" opacity="0.5"/>
+    <!-- Cheek marks - right -->
+    <ellipse cx="12.5" cy="10" rx="1.8" ry="1.2" fill="#C94420" opacity="0.5"/>
+    <!-- Cheek blush - left -->
+    <ellipse cx="5.8" cy="11" rx="1.4" ry="0.8" fill="#FF9999" opacity="0.4"/>
+    <!-- Cheek blush - right -->
+    <ellipse cx="12.2" cy="11" rx="1.4" ry="0.8" fill="#FF9999" opacity="0.4"/>
+    <!-- Left eye -->
+    <ellipse cx="6.8" cy="9" rx="1" ry="1.1" fill="#3D2B1F"/>
+    <!-- Right eye -->
+    <ellipse cx="11.2" cy="9" rx="1" ry="1.1" fill="#3D2B1F"/>
+    <!-- Eye shine left -->
+    <circle cx="7.1" cy="8.6" r="0.35" fill="white"/>
+    <!-- Eye shine right -->
+    <circle cx="11.5" cy="8.6" r="0.35" fill="white"/>
+    <!-- Nose -->
+    <ellipse cx="9" cy="11.5" rx="0.8" ry="0.6" fill="#3D2B1F"/>
+    <!-- Mouth -->
+    <path d="M8.2 12.3 Q9 13 9.8 12.3" stroke="#3D2B1F" stroke-width="0.5" fill="none" stroke-linecap="round"/>
+  </g>
+</svg>

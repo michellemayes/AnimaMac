@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18" width="18" height="18">
+  <!-- Red Panda face - menu bar template icon -->
+  <!-- Left ear -->
+  <ellipse cx="4.5" cy="3.5" rx="2.8" ry="3" fill="black"/>
+  <!-- Right ear -->
+  <ellipse cx="13.5" cy="3.5" rx="2.8" ry="3" fill="black"/>
+  <!-- Inner left ear -->
+  <ellipse cx="4.5" cy="3.5" rx="1.5" ry="1.6" fill="white"/>
+  <!-- Inner right ear -->
+  <ellipse cx="13.5" cy="3.5" rx="1.5" ry="1.6" fill="white"/>
+  <!-- Head -->
+  <ellipse cx="9" cy="10" rx="6.5" ry="6" fill="black"/>
+  <!-- Face (lighter area) -->
+  <ellipse cx="9" cy="10.5" rx="5" ry="4.8" fill="white"/>
+  <!-- Cheek marks - left -->
+  <ellipse cx="5.5" cy="10" rx="1.8" ry="1.2" fill="black" opacity="0.5"/>
+  <!-- Cheek marks - right -->
+  <ellipse cx="12.5" cy="10" rx="1.8" ry="1.2" fill="black" opacity="0.5"/>
+  <!-- Left eye -->
+  <ellipse cx="6.8" cy="9" rx="1" ry="1.1" fill="black"/>
+  <!-- Right eye -->
+  <ellipse cx="11.2" cy="9" rx="1" ry="1.1" fill="black"/>
+  <!-- Eye shine left -->
+  <circle cx="7.1" cy="8.6" r="0.35" fill="white"/>
+  <!-- Eye shine right -->
+  <circle cx="11.5" cy="8.6" r="0.35" fill="white"/>
+  <!-- Nose -->
+  <ellipse cx="9" cy="11.5" rx="0.8" ry="0.6" fill="black"/>
+  <!-- Mouth -->
+  <path d="M8.2 12.3 Q9 13 9.8 12.3" stroke="black" stroke-width="0.5" fill="none" stroke-linecap="round"/>
+</svg>
