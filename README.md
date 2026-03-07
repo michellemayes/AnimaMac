@@ -6,9 +6,11 @@
 
 <p align="center">A native macOS GIF recorder inspired by <a href="https://gifox.app">Gifox</a>. Record your screen to high-quality GIFs with no time limits.</p>
 
-![macOS 14+](https://img.shields.io/badge/macOS-14%2B-blue)
-![Swift 5.9+](https://img.shields.io/badge/Swift-5.9%2B-orange)
-![License](https://img.shields.io/badge/License-MIT-green)
+<p align="center">
+  <img src="https://img.shields.io/badge/macOS-14%2B-blue" alt="macOS 14+">
+  <img src="https://img.shields.io/badge/Swift-5.9%2B-orange" alt="Swift 5.9+">
+  <img src="https://img.shields.io/badge/License-MIT-green" alt="License">
+</p>
 
 ## Features
 
