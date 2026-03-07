@@ -115,7 +115,7 @@ actor FFmpegManager {
     func runWithProgress(
         arguments: [String],
         duration: TimeInterval,
-        progressHandler: @escaping (Double) -> Void
+        progressHandler: @escaping @Sendable (Double) -> Void
     ) async throws {
         try await ensureAvailable()
 

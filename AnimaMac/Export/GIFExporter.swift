@@ -1,14 +1,14 @@
 import Foundation
 import AVFoundation
 
-final class GIFExporter {
+final class GIFExporter: Sendable {
     private let ffmpeg = FFmpegManager.shared
 
     func export(
         videoURL: URL,
         to outputURL: URL,
         settings: ExportSettings,
-        progressHandler: @escaping (Double) -> Void
+        progressHandler: @escaping @Sendable (Double) -> Void
     ) async throws {
         // Get video duration for progress tracking
         let asset = AVAsset(url: videoURL)
@@ -32,7 +32,7 @@ final class GIFExporter {
         )
     }
 
-    private func buildFilterChain(settings: ExportSettings) -> String {
+    func buildFilterChain(settings: ExportSettings) -> String {
         // Two-pass palette generation for high quality GIFs
         // fps -> scale -> split -> palettegen -> paletteuse
 

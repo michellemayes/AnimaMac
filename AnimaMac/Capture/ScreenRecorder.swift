@@ -183,19 +183,16 @@ extension ScreenRecorder: SCStreamOutput {
 
         let presentationTime = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
 
-        // Use Task to access main actor-isolated properties
+        nonisolated(unsafe) let buffer = imageBuffer
         Task { @MainActor in
             guard let videoInput = videoInput, videoInput.isReadyForMoreMediaData else { return }
-            
-            // Calculate relative time
+
             if startTime == nil {
                 startTime = presentationTime
             }
 
             let relativeTime = CMTimeSubtract(presentationTime, startTime!)
-
-            // Append pixel buffer
-            pixelBufferAdaptor?.append(imageBuffer, withPresentationTime: relativeTime)
+            pixelBufferAdaptor?.append(buffer, withPresentationTime: relativeTime)
         }
     }
 }

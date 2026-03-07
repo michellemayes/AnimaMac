@@ -1,10 +1,13 @@
-// swift-tools-version: 5.9
+// swift-tools-version: 6.0
 import PackageDescription
 
 let package = Package(
     name: "AnimaMac",
     platforms: [
         .macOS(.v14)
+    ],
+    dependencies: [
+        .package(url: "https://github.com/apple/swift-testing.git", from: "0.12.0")
     ],
     targets: [
         .executableTarget(
@@ -27,6 +30,14 @@ let package = Package(
                 "UI/RecordingOverlay.swift",
                 "UI/SettingsView.swift"
             ]
+        ),
+        .testTarget(
+            name: "AnimaMacTests",
+            dependencies: [
+                "AnimaMac",
+                .product(name: "Testing", package: "swift-testing")
+            ],
+            path: "AnimaMacTests"
         )
     ]
 )
