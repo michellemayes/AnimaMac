@@ -3,12 +3,13 @@ import AVFoundation
 
 // MARK: - Protocol
 
-protocol GIFExporterProtocol {
+@MainActor
+protocol GIFExporterProtocol: Sendable {
     func export(
         videoURL: URL,
         to outputURL: URL,
         settings: ExportSettings,
-        progressHandler: @escaping (Double) -> Void
+        progressHandler: @escaping @Sendable (Double) -> Void
     ) async throws
 
     func buildFilterChain(settings: ExportSettings) -> String
@@ -16,14 +17,14 @@ protocol GIFExporterProtocol {
 
 // MARK: - Implementation
 
-final class GIFExporter: GIFExporterProtocol {
+final class GIFExporter: GIFExporterProtocol, Sendable {
     private let ffmpeg = FFmpegManager.shared
 
     func export(
         videoURL: URL,
         to outputURL: URL,
         settings: ExportSettings,
-        progressHandler: @escaping (Double) -> Void
+        progressHandler: @escaping @Sendable (Double) -> Void
     ) async throws {
         print("[GIFExporter] Starting export: \(videoURL.path) -> \(outputURL.path)")
 

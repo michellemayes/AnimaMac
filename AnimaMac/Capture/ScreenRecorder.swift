@@ -5,7 +5,8 @@ import CoreGraphics
 
 // MARK: - Protocol
 
-protocol ScreenRecorderProtocol: AnyObject {
+@MainActor
+protocol ScreenRecorderProtocol: AnyObject, Sendable {
     func startRecording(
         display: SCDisplay,
         cropRect: CGRect?,
@@ -24,7 +25,7 @@ protocol ScreenRecorderProtocol: AnyObject {
 
 // MARK: - Implementation
 
-final class ScreenRecorder: NSObject, ObservableObject, ScreenRecorderProtocol {
+final class ScreenRecorder: NSObject, ObservableObject, ScreenRecorderProtocol, @unchecked Sendable {
     private var stream: SCStream?
     private var assetWriter: AVAssetWriter?
     private var videoInput: AVAssetWriterInput?
@@ -37,9 +38,6 @@ final class ScreenRecorder: NSObject, ObservableObject, ScreenRecorderProtocol {
 
     // Use a dedicated serial queue for video writing to avoid frame drops
     private let videoQueue = DispatchQueue(label: "com.animamac.videoqueue", qos: .userInteractive)
-
-    // Lock for thread-safe access to writer components
-    private let writerLock = NSLock()
 
     // MARK: - Permissions
 
@@ -248,37 +246,17 @@ extension ScreenRecorder: SCStreamOutput {
 
         let presentationTime = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
 
-        // Access shared state through MainActor synchronously to avoid frame drops
-        // We need to capture the writer components safely
-        var localVideoInput: AVAssetWriterInput?
-        var localAdaptor: AVAssetWriterInputPixelBufferAdaptor?
-        var localStartTime: CMTime?
-        var needsStartTime = false
+        nonisolated(unsafe) let buffer = imageBuffer
+        Task { @MainActor in
+            guard let videoInput = self.videoInput, videoInput.isReadyForMoreMediaData else { return }
 
-        // Synchronously access main actor state
-        DispatchQueue.main.sync {
-            localVideoInput = self.videoInput
-            localAdaptor = self.pixelBufferAdaptor
-            localStartTime = self.startTime
-            needsStartTime = self.startTime == nil
-
-            if needsStartTime {
+            if self.startTime == nil {
                 self.startTime = presentationTime
-                localStartTime = presentationTime
             }
+
+            let relativeTime = CMTimeSubtract(presentationTime, self.startTime!)
+            self.pixelBufferAdaptor?.append(buffer, withPresentationTime: relativeTime)
         }
-
-        guard let videoInput = localVideoInput,
-              let adaptor = localAdaptor,
-              let start = localStartTime,
-              videoInput.isReadyForMoreMediaData else {
-            return
-        }
-
-        let relativeTime = CMTimeSubtract(presentationTime, start)
-
-        // Append pixel buffer on the video queue (we're already on it)
-        adaptor.append(imageBuffer, withPresentationTime: relativeTime)
     }
 }
 

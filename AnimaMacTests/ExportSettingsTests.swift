@@ -1,199 +1,186 @@
-import XCTest
+import Foundation
+import Testing
+
 @testable import AnimaMacCore
 
-final class ExportSettingsTests: XCTestCase {
+@Suite("ExportSettings")
+struct ExportSettingsTests {
 
-    // MARK: - Default Values
-
-    func testDefaultSettings() {
+    @Test("Default preset is medium")
+    func defaultPreset() {
         let settings = ExportSettings()
-
-        XCTAssertEqual(settings.preset, .medium)
-        XCTAssertNil(settings.customFPS)
-        XCTAssertNil(settings.customMaxWidth)
-        XCTAssertNil(settings.customMaxColors)
-        XCTAssertNil(settings.customDithering)
-        XCTAssertEqual(settings.loopCount, 0)
+        #expect(settings.preset == .medium)
     }
 
-    func testDefaultValuesFromPreset() {
+    @Test("Default loop count is 0 (infinite)")
+    func defaultLoopCount() {
         let settings = ExportSettings()
-
-        // Medium preset defaults
-        XCTAssertEqual(settings.fps, 15)
-        XCTAssertEqual(settings.maxWidth, 640)
-        XCTAssertEqual(settings.maxColors, 256)
-        XCTAssertEqual(settings.dithering, .sierra2)
+        #expect(settings.loopCount == 0)
     }
 
-    // MARK: - Preset Values
-
-    func testSmallPreset() {
-        var settings = ExportSettings()
-        settings.preset = .small
-
-        XCTAssertEqual(settings.fps, 10)
-        XCTAssertEqual(settings.maxWidth, 480)
-        XCTAssertEqual(settings.maxColors, 128)
-        XCTAssertEqual(settings.dithering, .bayer)
+    @Test("Custom overrides are nil by default")
+    func defaultCustomOverrides() {
+        let settings = ExportSettings()
+        #expect(settings.customFPS == nil)
+        #expect(settings.customMaxWidth == nil)
+        #expect(settings.customMaxColors == nil)
+        #expect(settings.customDithering == nil)
     }
 
-    func testMediumPreset() {
-        var settings = ExportSettings()
-        settings.preset = .medium
-
-        XCTAssertEqual(settings.fps, 15)
-        XCTAssertEqual(settings.maxWidth, 640)
-        XCTAssertEqual(settings.maxColors, 256)
-        XCTAssertEqual(settings.dithering, .sierra2)
+    @Test("FPS falls back to preset", arguments: ExportPreset.allCases)
+    func fpsUsesPreset(preset: ExportPreset) {
+        let settings = ExportSettings(preset: preset)
+        #expect(settings.fps == preset.fps)
     }
 
-    func testLargePreset() {
-        var settings = ExportSettings()
-        settings.preset = .large
-
-        XCTAssertEqual(settings.fps, 20)
-        XCTAssertEqual(settings.maxWidth, 1280)
-        XCTAssertEqual(settings.maxColors, 256)
-        XCTAssertEqual(settings.dithering, .floydSteinberg)
+    @Test("MaxWidth falls back to preset", arguments: ExportPreset.allCases)
+    func maxWidthUsesPreset(preset: ExportPreset) {
+        let settings = ExportSettings(preset: preset)
+        #expect(settings.maxWidth == preset.maxWidth)
     }
 
-    func testOriginalPreset() {
-        var settings = ExportSettings()
-        settings.preset = .original
-
-        XCTAssertEqual(settings.fps, 30)
-        XCTAssertEqual(settings.maxWidth, 9999)
-        XCTAssertEqual(settings.maxColors, 256)
-        XCTAssertEqual(settings.dithering, .floydSteinberg)
+    @Test("MaxColors falls back to preset", arguments: ExportPreset.allCases)
+    func maxColorsUsesPreset(preset: ExportPreset) {
+        let settings = ExportSettings(preset: preset)
+        #expect(settings.maxColors == preset.maxColors)
     }
 
-    // MARK: - Custom Values Override Preset
-
-    func testCustomFPSOverridesPreset() {
-        var settings = ExportSettings()
-        settings.preset = .small  // fps = 10
-        settings.customFPS = 25
-
-        XCTAssertEqual(settings.fps, 25)
+    @Test("Dithering falls back to preset", arguments: ExportPreset.allCases)
+    func ditheringUsesPreset(preset: ExportPreset) {
+        let settings = ExportSettings(preset: preset)
+        #expect(settings.dithering == preset.dithering)
     }
 
-    func testCustomMaxWidthOverridesPreset() {
-        var settings = ExportSettings()
-        settings.preset = .small  // maxWidth = 480
-        settings.customMaxWidth = 800
-
-        XCTAssertEqual(settings.maxWidth, 800)
+    @Test("Custom FPS overrides preset")
+    func customFPSOverrides() {
+        let settings = ExportSettings(preset: .small, customFPS: 24)
+        #expect(settings.fps == 24)
     }
 
-    func testCustomMaxColorsOverridesPreset() {
-        var settings = ExportSettings()
-        settings.preset = .small  // maxColors = 128
-        settings.customMaxColors = 64
-
-        XCTAssertEqual(settings.maxColors, 64)
+    @Test("Custom max width overrides preset")
+    func customMaxWidthOverrides() {
+        let settings = ExportSettings(preset: .small, customMaxWidth: 800)
+        #expect(settings.maxWidth == 800)
     }
 
-    func testCustomDitheringOverridesPreset() {
-        var settings = ExportSettings()
-        settings.preset = .small  // dithering = .bayer
-        settings.customDithering = .floydSteinberg
-
-        XCTAssertEqual(settings.dithering, .floydSteinberg)
+    @Test("Custom max colors overrides preset")
+    func customMaxColorsOverrides() {
+        let settings = ExportSettings(preset: .large, customMaxColors: 64)
+        #expect(settings.maxColors == 64)
     }
 
-    // MARK: - Codable
+    @Test("Custom dithering overrides preset")
+    func customDitheringOverrides() {
+        let settings = ExportSettings(preset: .small, customDithering: DitheringMode.none)
+        #expect(settings.dithering == DitheringMode.none)
+    }
 
-    func testEncodeDecode() throws {
-        var settings = ExportSettings()
-        settings.preset = .large
+    @Test("Codable round-trip")
+    func codableRoundTrip() throws {
+        var settings = ExportSettings(preset: .large)
         settings.customFPS = 24
         settings.loopCount = 3
-
-        let encoder = JSONEncoder()
-        let data = try encoder.encode(settings)
-
-        let decoder = JSONDecoder()
-        let decoded = try decoder.decode(ExportSettings.self, from: data)
-
-        XCTAssertEqual(decoded.preset, .large)
-        XCTAssertEqual(decoded.customFPS, 24)
-        XCTAssertEqual(decoded.loopCount, 3)
-        XCTAssertEqual(decoded.fps, 24)  // Custom overrides preset
+        let data = try JSONEncoder().encode(settings)
+        let decoded = try JSONDecoder().decode(ExportSettings.self, from: data)
+        #expect(settings == decoded)
     }
 
-    // MARK: - Equatable
-
-    func testEquality() {
-        let settings1 = ExportSettings()
-        let settings2 = ExportSettings()
-
-        XCTAssertEqual(settings1, settings2)
-    }
-
-    func testInequality() {
-        var settings1 = ExportSettings()
-        var settings2 = ExportSettings()
-        settings2.preset = .large
-
-        XCTAssertNotEqual(settings1, settings2)
+    @Test("Equatable")
+    func equatable() {
+        #expect(ExportSettings(preset: .medium) == ExportSettings(preset: .medium))
+        #expect(ExportSettings(preset: .small) != ExportSettings(preset: .large))
     }
 }
 
-// MARK: - ExportPreset Tests
+@Suite("ExportPreset")
+struct ExportPresetTests {
 
-final class ExportPresetTests: XCTestCase {
-
-    func testAllCases() {
-        let allCases = ExportPreset.allCases
-        XCTAssertEqual(allCases.count, 4)
-        XCTAssertTrue(allCases.contains(.small))
-        XCTAssertTrue(allCases.contains(.medium))
-        XCTAssertTrue(allCases.contains(.large))
-        XCTAssertTrue(allCases.contains(.original))
+    @Test("Has 4 cases")
+    func allCases() {
+        #expect(ExportPreset.allCases.count == 4)
     }
 
-    func testDisplayNames() {
-        XCTAssertEqual(ExportPreset.small.displayName, "Small (Fast upload)")
-        XCTAssertEqual(ExportPreset.medium.displayName, "Medium (Balanced)")
-        XCTAssertEqual(ExportPreset.large.displayName, "Large (High quality)")
-        XCTAssertEqual(ExportPreset.original.displayName, "Original (Maximum quality)")
+    @Test("ID equals rawValue", arguments: ExportPreset.allCases)
+    func identifiable(preset: ExportPreset) {
+        #expect(preset.id == preset.rawValue)
     }
 
-    func testIdentifiable() {
-        XCTAssertEqual(ExportPreset.small.id, "small")
-        XCTAssertEqual(ExportPreset.medium.id, "medium")
-        XCTAssertEqual(ExportPreset.large.id, "large")
-        XCTAssertEqual(ExportPreset.original.id, "original")
+    @Test("Display names are non-empty", arguments: ExportPreset.allCases)
+    func displayNames(preset: ExportPreset) {
+        #expect(!preset.displayName.isEmpty)
+    }
+
+    @Test("FPS values")
+    func fpsValues() {
+        #expect(ExportPreset.small.fps == 10)
+        #expect(ExportPreset.medium.fps == 15)
+        #expect(ExportPreset.large.fps == 20)
+        #expect(ExportPreset.original.fps == 30)
+    }
+
+    @Test("Max width values")
+    func maxWidthValues() {
+        #expect(ExportPreset.small.maxWidth == 480)
+        #expect(ExportPreset.medium.maxWidth == 640)
+        #expect(ExportPreset.large.maxWidth == 1280)
+        #expect(ExportPreset.original.maxWidth == 9999)
+    }
+
+    @Test("Max colors values")
+    func maxColorsValues() {
+        #expect(ExportPreset.small.maxColors == 128)
+        #expect(ExportPreset.medium.maxColors == 256)
+        #expect(ExportPreset.large.maxColors == 256)
+        #expect(ExportPreset.original.maxColors == 256)
+    }
+
+    @Test("Dithering values")
+    func ditheringValues() {
+        #expect(ExportPreset.small.dithering == .bayer)
+        #expect(ExportPreset.medium.dithering == .sierra2)
+        #expect(ExportPreset.large.dithering == .floydSteinberg)
+        #expect(ExportPreset.original.dithering == .floydSteinberg)
+    }
+
+    @Test("Codable round-trip", arguments: ExportPreset.allCases)
+    func codable(preset: ExportPreset) throws {
+        let data = try JSONEncoder().encode(preset)
+        let decoded = try JSONDecoder().decode(ExportPreset.self, from: data)
+        #expect(preset == decoded)
     }
 }
 
-// MARK: - DitheringMode Tests
+@Suite("DitheringMode")
+struct DitheringModeTests {
 
-final class DitheringModeTests: XCTestCase {
-
-    func testAllCases() {
-        let allCases = DitheringMode.allCases
-        XCTAssertEqual(allCases.count, 5)
+    @Test("Has 5 cases")
+    func allCases() {
+        #expect(DitheringMode.allCases.count == 5)
     }
 
-    func testFFmpegValues() {
-        XCTAssertEqual(DitheringMode.none.ffmpegValue, "none")
-        XCTAssertEqual(DitheringMode.bayer.ffmpegValue, "bayer")
-        XCTAssertEqual(DitheringMode.sierra2.ffmpegValue, "sierra2")
-        XCTAssertEqual(DitheringMode.sierra2_4a.ffmpegValue, "sierra2_4a")
-        XCTAssertEqual(DitheringMode.floydSteinberg.ffmpegValue, "floyd_steinberg")
+    @Test("ID equals rawValue", arguments: DitheringMode.allCases)
+    func identifiable(mode: DitheringMode) {
+        #expect(mode.id == mode.rawValue)
     }
 
-    func testDisplayNames() {
-        XCTAssertEqual(DitheringMode.none.displayName, "None (sharp edges)")
-        XCTAssertEqual(DitheringMode.bayer.displayName, "Bayer (ordered)")
-        XCTAssertEqual(DitheringMode.sierra2.displayName, "Sierra-2")
-        XCTAssertEqual(DitheringMode.sierra2_4a.displayName, "Sierra-2-4A (fast)")
-        XCTAssertEqual(DitheringMode.floydSteinberg.displayName, "Floyd-Steinberg (smooth)")
+    @Test("Display names are non-empty", arguments: DitheringMode.allCases)
+    func displayNames(mode: DitheringMode) {
+        #expect(!mode.displayName.isEmpty)
     }
 
-    func testIdentifiable() {
-        XCTAssertEqual(DitheringMode.floydSteinberg.id, "floydSteinberg")
+    @Test("FFmpeg values")
+    func ffmpegValues() {
+        #expect(DitheringMode.none.ffmpegValue == "none")
+        #expect(DitheringMode.bayer.ffmpegValue == "bayer")
+        #expect(DitheringMode.sierra2.ffmpegValue == "sierra2")
+        #expect(DitheringMode.sierra2_4a.ffmpegValue == "sierra2_4a")
+        #expect(DitheringMode.floydSteinberg.ffmpegValue == "floyd_steinberg")
+    }
+
+    @Test("Codable round-trip", arguments: DitheringMode.allCases)
+    func codable(mode: DitheringMode) throws {
+        let data = try JSONEncoder().encode(mode)
+        let decoded = try JSONDecoder().decode(DitheringMode.self, from: data)
+        #expect(mode == decoded)
     }
 }

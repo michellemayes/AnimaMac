@@ -153,7 +153,7 @@ actor FFmpegManager {
     func runWithProgress(
         arguments: [String],
         duration: TimeInterval,
-        progressHandler: @escaping (Double) -> Void
+        progressHandler: @escaping @Sendable (Double) -> Void
     ) async throws {
         try await ensureAvailable()
 
@@ -170,7 +170,7 @@ actor FFmpegManager {
         process.standardError = errorPipe
 
         // Parse stderr for progress (FFmpeg outputs progress info to stderr)
-        var lastProgress: Double = 0
+        nonisolated(unsafe) var lastProgress: Double = 0
         errorPipe.fileHandleForReading.readabilityHandler = { handle in
             let data = handle.availableData
             guard !data.isEmpty else { return }

@@ -1,4 +1,4 @@
-// swift-tools-version: 5.9
+// swift-tools-version: 6.0
 import PackageDescription
 
 let package = Package(
@@ -8,6 +8,9 @@ let package = Package(
     ],
     products: [
         .library(name: "AnimaMacCore", targets: ["AnimaMacCore"])
+    ],
+    dependencies: [
+        .package(url: "https://github.com/apple/swift-testing.git", from: "0.12.0")
     ],
     targets: [
         // Core library with all the business logic (testable)
@@ -35,7 +38,10 @@ let package = Package(
         // Test target
         .testTarget(
             name: "AnimaMacTests",
-            dependencies: ["AnimaMacCore"],
+            dependencies: [
+                "AnimaMacCore",
+                .product(name: "Testing", package: "swift-testing")
+            ],
             path: "AnimaMacTests"
         )
     ]

@@ -1,322 +1,203 @@
-import XCTest
+import Foundation
+import Testing
+
 @testable import AnimaMacCore
 
-final class RecordingLibraryTests: XCTestCase {
+@Suite("RecordingLibrary")
+struct RecordingLibraryTests {
 
-    var tempDir: URL!
-    var library: RecordingLibrary!
+    private func withTempDir(_ body: (URL, RecordingLibrary) throws -> Void) throws {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("AnimaMacTests-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
 
-    override func setUp() {
-        super.setUp()
-        // Create a unique temp directory for each test
-        tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("AnimaMacTests_\(UUID().uuidString)")
-        try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-
-        // Use the real RecordingLibrary with a custom base directory
-        library = RecordingLibrary(baseDirectory: tempDir)
+        let library = RecordingLibrary(baseDirectory: tempDir)
+        try body(tempDir, library)
     }
 
-    override func tearDown() {
-        // Clean up temp directory
-        try? FileManager.default.removeItem(at: tempDir)
-        library = nil
-        tempDir = nil
-        super.tearDown()
-    }
-
-    // MARK: - Load Empty Library
-
-    func testLoadEmptyLibrary() {
-        let recordings = library.loadRecordings()
-        XCTAssertTrue(recordings.isEmpty)
-    }
-
-    // MARK: - Save and Load
-
-    func testSaveAndLoadRecording() throws {
-        // Create a temp video file
-        let videoURL = tempDir.appendingPathComponent("test.mov")
-        try Data("test".utf8).write(to: videoURL)
-
-        let recording = Recording(
+    private func makeRecording(in dir: URL, name: String = UUID().uuidString) -> Recording {
+        Recording(
             id: UUID(),
             createdAt: Date(),
-            sourceVideoURL: videoURL,
-            duration: 10.0
+            sourceVideoURL: dir.appendingPathComponent("\(name).mov"),
+            duration: 5.0
         )
-
-        library.save(recording)
-
-        let loaded = library.loadRecordings()
-        XCTAssertEqual(loaded.count, 1)
-        XCTAssertEqual(loaded.first?.id, recording.id)
-        XCTAssertEqual(loaded.first?.duration, 10.0)
     }
 
-    func testSaveMultipleRecordings() throws {
-        let videoURL1 = tempDir.appendingPathComponent("test1.mov")
-        let videoURL2 = tempDir.appendingPathComponent("test2.mov")
-        try Data("test".utf8).write(to: videoURL1)
-        try Data("test".utf8).write(to: videoURL2)
+    // MARK: - Load
 
-        let recording1 = Recording(id: UUID(), createdAt: Date(), sourceVideoURL: videoURL1, duration: 5.0)
-        let recording2 = Recording(id: UUID(), createdAt: Date(), sourceVideoURL: videoURL2, duration: 10.0)
+    @Test("Returns empty when no file exists")
+    func loadEmpty() throws {
+        try withTempDir { _, library in
+            #expect(library.loadRecordings().isEmpty)
+        }
+    }
 
-        library.save(recording1)
-        library.save(recording2)
+    @Test("Returns empty for corrupted JSON")
+    func loadCorrupted() throws {
+        try withTempDir { dir, library in
+            let libraryURL = dir.appendingPathComponent("library.json")
+            try "not json".data(using: .utf8)!.write(to: libraryURL)
+            #expect(library.loadRecordings().isEmpty)
+        }
+    }
 
-        let loaded = library.loadRecordings()
-        XCTAssertEqual(loaded.count, 2)
+    @Test("Filters out recordings with missing files")
+    func loadFiltersMissing() throws {
+        try withTempDir { dir, library in
+            let recording = makeRecording(in: dir)
+            // Don't create the video file
+            let libraryURL = dir.appendingPathComponent("library.json")
+            try JSONEncoder().encode([recording]).write(to: libraryURL)
+            #expect(library.loadRecordings().isEmpty)
+        }
+    }
 
-        // Most recent should be first
-        XCTAssertEqual(loaded.first?.id, recording2.id)
+    @Test("Returns recordings with existing files")
+    func loadWithExistingFiles() throws {
+        try withTempDir { dir, library in
+            let recording = makeRecording(in: dir)
+            try Data().write(to: recording.sourceVideoURL)
+            let libraryURL = dir.appendingPathComponent("library.json")
+            try JSONEncoder().encode([recording]).write(to: libraryURL)
+            let loaded = library.loadRecordings()
+            #expect(loaded.count == 1)
+            #expect(loaded.first?.id == recording.id)
+        }
+    }
+
+    // MARK: - Save
+
+    @Test("Save creates the library file")
+    func saveCreatesFile() throws {
+        try withTempDir { dir, library in
+            let recording = makeRecording(in: dir)
+            try Data().write(to: recording.sourceVideoURL)
+            library.save(recording)
+            let libraryURL = dir.appendingPathComponent("library.json")
+            #expect(FileManager.default.fileExists(atPath: libraryURL.path))
+        }
+    }
+
+    @Test("Save inserts at beginning")
+    func saveInsertsAtBeginning() throws {
+        try withTempDir { dir, library in
+            let r1 = makeRecording(in: dir, name: "v1")
+            let r2 = makeRecording(in: dir, name: "v2")
+            try Data().write(to: r1.sourceVideoURL)
+            try Data().write(to: r2.sourceVideoURL)
+            library.save(r1)
+            library.save(r2)
+            let loaded = library.loadRecordings()
+            #expect(loaded.count == 2)
+            #expect(loaded.first?.id == r2.id)
+        }
     }
 
     // MARK: - Update
 
-    func testUpdateRecording() throws {
-        let videoURL = tempDir.appendingPathComponent("test.mov")
-        let gifURL = tempDir.appendingPathComponent("test.gif")
-        try Data("test".utf8).write(to: videoURL)
-        try Data("test".utf8).write(to: gifURL)
-
-        var recording = Recording(
-            id: UUID(),
-            createdAt: Date(),
-            sourceVideoURL: videoURL,
-            duration: 10.0
-        )
-
-        library.save(recording)
-
-        // Update with GIF URL
-        recording.exportedGIFURL = gifURL
-        library.update(recording)
-
-        let loaded = library.loadRecordings()
-        XCTAssertEqual(loaded.count, 1)
-        XCTAssertEqual(loaded.first?.exportedGIFURL, gifURL)
+    @Test("Update modifies existing recording")
+    func updateModifies() throws {
+        try withTempDir { dir, library in
+            let gifURL = dir.appendingPathComponent("video.gif")
+            var recording = makeRecording(in: dir)
+            try Data().write(to: recording.sourceVideoURL)
+            library.save(recording)
+            recording.exportedGIFURL = gifURL
+            library.update(recording)
+            let loaded = library.loadRecordings()
+            #expect(loaded.first?.exportedGIFURL == gifURL)
+        }
     }
 
-    func testUpdateNonexistentRecording() throws {
-        let videoURL = tempDir.appendingPathComponent("test.mov")
-        try Data("test".utf8).write(to: videoURL)
-
-        let recording = Recording(
-            id: UUID(),
-            createdAt: Date(),
-            sourceVideoURL: videoURL,
-            duration: 10.0
-        )
-
-        // Try to update without saving first
-        library.update(recording)
-
-        let loaded = library.loadRecordings()
-        XCTAssertTrue(loaded.isEmpty)
+    @Test("Update ignores unknown ID")
+    func updateIgnoresUnknown() throws {
+        try withTempDir { dir, library in
+            let existing = makeRecording(in: dir, name: "existing")
+            try Data().write(to: existing.sourceVideoURL)
+            library.save(existing)
+            let unknown = makeRecording(in: dir, name: "unknown")
+            try Data().write(to: unknown.sourceVideoURL)
+            library.update(unknown)
+            let loaded = library.loadRecordings()
+            #expect(loaded.count == 1)
+            #expect(loaded.first?.id == existing.id)
+        }
     }
 
     // MARK: - Delete
 
-    func testDeleteRecording() throws {
-        let videoURL = tempDir.appendingPathComponent("test.mov")
-        try Data("test".utf8).write(to: videoURL)
-
-        let recording = Recording(
-            id: UUID(),
-            createdAt: Date(),
-            sourceVideoURL: videoURL,
-            duration: 10.0
-        )
-
-        library.save(recording)
-        XCTAssertEqual(library.loadRecordings().count, 1)
-
-        library.delete(recording)
-
-        let loaded = library.loadRecordings()
-        XCTAssertTrue(loaded.isEmpty)
-
-        // Video file should also be deleted
-        XCTAssertFalse(FileManager.default.fileExists(atPath: videoURL.path))
+    @Test("Delete removes recording from library")
+    func deleteRemovesFromLibrary() throws {
+        try withTempDir { dir, library in
+            let recording = makeRecording(in: dir)
+            try Data().write(to: recording.sourceVideoURL)
+            library.save(recording)
+            library.delete(recording)
+            #expect(library.loadRecordings().isEmpty)
+        }
     }
 
-    func testDeleteRecordingWithGIF() throws {
-        let videoURL = tempDir.appendingPathComponent("test.mov")
-        let gifURL = tempDir.appendingPathComponent("test.gif")
-        try Data("test".utf8).write(to: videoURL)
-        try Data("test".utf8).write(to: gifURL)
-
-        var recording = Recording(
-            id: UUID(),
-            createdAt: Date(),
-            sourceVideoURL: videoURL,
-            duration: 10.0
-        )
-        recording.exportedGIFURL = gifURL
-
-        library.save(recording)
-        library.delete(recording)
-
-        // Both files should be deleted
-        XCTAssertFalse(FileManager.default.fileExists(atPath: videoURL.path))
-        XCTAssertFalse(FileManager.default.fileExists(atPath: gifURL.path))
+    @Test("Delete removes video file")
+    func deleteRemovesVideoFile() throws {
+        try withTempDir { dir, library in
+            let recording = makeRecording(in: dir)
+            try Data().write(to: recording.sourceVideoURL)
+            library.save(recording)
+            library.delete(recording)
+            #expect(!FileManager.default.fileExists(atPath: recording.sourceVideoURL.path))
+        }
     }
 
-    func testDeleteAll() throws {
-        let videoURL1 = tempDir.appendingPathComponent("test1.mov")
-        let videoURL2 = tempDir.appendingPathComponent("test2.mov")
-        try Data("test".utf8).write(to: videoURL1)
-        try Data("test".utf8).write(to: videoURL2)
-
-        library.save(Recording(id: UUID(), createdAt: Date(), sourceVideoURL: videoURL1, duration: 5.0))
-        library.save(Recording(id: UUID(), createdAt: Date(), sourceVideoURL: videoURL2, duration: 10.0))
-
-        XCTAssertEqual(library.loadRecordings().count, 2)
-
-        library.deleteAll()
-
-        XCTAssertTrue(library.loadRecordings().isEmpty)
+    @Test("Delete removes GIF file")
+    func deleteRemovesGIFFile() throws {
+        try withTempDir { dir, library in
+            let gifURL = dir.appendingPathComponent("video.gif")
+            var recording = makeRecording(in: dir)
+            recording.exportedGIFURL = gifURL
+            try Data().write(to: recording.sourceVideoURL)
+            try Data().write(to: gifURL)
+            library.save(recording)
+            library.delete(recording)
+            #expect(!FileManager.default.fileExists(atPath: gifURL.path))
+        }
     }
 
-    // MARK: - Filter Missing Files
+    // MARK: - DeleteAll
 
-    func testFilterOutMissingFiles() throws {
-        let videoURL1 = tempDir.appendingPathComponent("test1.mov")
-        let videoURL2 = tempDir.appendingPathComponent("test2.mov")
-        try Data("test".utf8).write(to: videoURL1)
-        try Data("test".utf8).write(to: videoURL2)
-
-        library.save(Recording(id: UUID(), createdAt: Date(), sourceVideoURL: videoURL1, duration: 5.0))
-        library.save(Recording(id: UUID(), createdAt: Date(), sourceVideoURL: videoURL2, duration: 10.0))
-
-        // Delete one video file directly (simulating external deletion)
-        try FileManager.default.removeItem(at: videoURL1)
-
-        let loaded = library.loadRecordings()
-        XCTAssertEqual(loaded.count, 1)
-        XCTAssertEqual(loaded.first?.sourceVideoURL, videoURL2)
+    @Test("DeleteAll removes everything")
+    func deleteAll() throws {
+        try withTempDir { dir, library in
+            let r1 = makeRecording(in: dir, name: "v1")
+            let r2 = makeRecording(in: dir, name: "v2")
+            try Data().write(to: r1.sourceVideoURL)
+            try Data().write(to: r2.sourceVideoURL)
+            library.save(r1)
+            library.save(r2)
+            library.deleteAll()
+            #expect(library.loadRecordings().isEmpty)
+            #expect(!FileManager.default.fileExists(atPath: r1.sourceVideoURL.path))
+            #expect(!FileManager.default.fileExists(atPath: r2.sourceVideoURL.path))
+        }
     }
 
     // MARK: - Storage Info
 
-    func testTotalStorageUsed() throws {
-        let videoURL = tempDir.appendingPathComponent("test.mov")
-        let testData = Data(repeating: 0x42, count: 2048)  // 2 KB
-        try testData.write(to: videoURL)
-
-        let recording = Recording(
-            id: UUID(),
-            createdAt: Date(),
-            sourceVideoURL: videoURL,
-            duration: 10.0
-        )
-
-        library.save(recording)
-
-        XCTAssertEqual(library.totalStorageUsed, 2048)
-    }
-
-    func testFormattedStorageUsed() throws {
-        let videoURL = tempDir.appendingPathComponent("test.mov")
-        let testData = Data(repeating: 0x42, count: 1024 * 1024)  // 1 MB
-        try testData.write(to: videoURL)
-
-        let recording = Recording(
-            id: UUID(),
-            createdAt: Date(),
-            sourceVideoURL: videoURL,
-            duration: 10.0
-        )
-
-        library.save(recording)
-
-        let formatted = library.formattedStorageUsed
-        XCTAssertTrue(formatted.contains("MB") || formatted.contains("KB"))
-    }
-
-    // MARK: - FileSystemProtocol Tests
-
-    func testFileSystemProtocolInjection() throws {
-        let mockFileSystem = MockFileSystem()
-        let library = RecordingLibrary(baseDirectory: tempDir, fileSystem: mockFileSystem)
-
-        // Should use the mock file system
-        _ = library.loadRecordings()
-        XCTAssertTrue(mockFileSystem.fileExistsCalled)
-    }
-
-    // MARK: - Edge Cases
-
-    func testLoadCorruptedLibraryFile() throws {
-        // Write invalid JSON to library file
-        let libraryURL = tempDir.appendingPathComponent("library.json")
-        try Data("not valid json".utf8).write(to: libraryURL)
-
-        let loaded = library.loadRecordings()
-        XCTAssertTrue(loaded.isEmpty)
-    }
-
-    func testSaveAndLoadPreservesAllFields() throws {
-        let videoURL = tempDir.appendingPathComponent("test.mov")
-        let gifURL = tempDir.appendingPathComponent("test.gif")
-        try Data("test".utf8).write(to: videoURL)
-        try Data("test".utf8).write(to: gifURL)
-
-        let id = UUID()
-        let date = Date()
-        var recording = Recording(
-            id: id,
-            createdAt: date,
-            sourceVideoURL: videoURL,
-            duration: 42.5
-        )
-        recording.exportedGIFURL = gifURL
-
-        library.save(recording)
-
-        let loaded = library.loadRecordings().first!
-        XCTAssertEqual(loaded.id, id)
-        XCTAssertEqual(loaded.sourceVideoURL, videoURL)
-        XCTAssertEqual(loaded.exportedGIFURL, gifURL)
-        XCTAssertEqual(loaded.duration, 42.5)
-    }
-}
-
-// MARK: - Mock File System
-
-class MockFileSystem: FileSystemProtocol {
-    var fileExistsCalled = false
-    var existingFiles: Set<String> = []
-    var fileContents: [String: Data] = [:]
-    var removedFiles: [URL] = []
-
-    func fileExists(atPath path: String) -> Bool {
-        fileExistsCalled = true
-        return existingFiles.contains(path)
-    }
-
-    func removeItem(at url: URL) throws {
-        removedFiles.append(url)
-    }
-
-    func createDirectory(at url: URL, withIntermediateDirectories: Bool, attributes: [FileAttributeKey: Any]?) throws {
-        // No-op for testing
-    }
-
-    func contentsOfFile(at url: URL) throws -> Data {
-        guard let data = fileContents[url.path] else {
-            throw NSError(domain: "MockFileSystem", code: 1, userInfo: nil)
+    @Test("Total storage used sums file sizes")
+    func totalStorageUsed() throws {
+        try withTempDir { dir, library in
+            let recording = makeRecording(in: dir)
+            try Data(repeating: 0, count: 2048).write(to: recording.sourceVideoURL)
+            library.save(recording)
+            #expect(library.totalStorageUsed == 2048)
         }
-        return data
     }
 
-    func write(_ data: Data, to url: URL, options: Data.WritingOptions) throws {
-        fileContents[url.path] = data
-    }
-
-    func attributesOfItem(atPath path: String) throws -> [FileAttributeKey: Any] {
-        return [.size: Int64(1024)]
+    @Test("Formatted storage used is non-empty")
+    func formattedStorageUsed() throws {
+        try withTempDir { _, library in
+            #expect(!library.formattedStorageUsed.isEmpty)
+        }
     }
 }

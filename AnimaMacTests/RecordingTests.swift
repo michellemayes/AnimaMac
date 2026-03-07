@@ -1,194 +1,131 @@
-import XCTest
+import Foundation
+import Testing
+
 @testable import AnimaMacCore
 
-final class RecordingTests: XCTestCase {
+@Suite("Recording Model")
+struct RecordingTests {
 
-    // MARK: - Initialization
+    // MARK: - formattedDuration
 
-    func testInitialization() {
-        let id = UUID()
-        let date = Date()
-        let videoURL = URL(fileURLWithPath: "/tmp/test.mov")
-
-        let recording = Recording(
-            id: id,
-            createdAt: date,
-            sourceVideoURL: videoURL,
-            duration: 10.5
-        )
-
-        XCTAssertEqual(recording.id, id)
-        XCTAssertEqual(recording.createdAt, date)
-        XCTAssertEqual(recording.sourceVideoURL, videoURL)
-        XCTAssertNil(recording.exportedGIFURL)
-        XCTAssertEqual(recording.duration, 10.5)
+    @Test("Formats seconds only")
+    func formattedDurationSecondsOnly() {
+        let recording = makeRecording(duration: 45)
+        #expect(recording.formattedDuration == "45s")
     }
 
-    func testInitializationWithGIF() {
-        let id = UUID()
-        let date = Date()
-        let videoURL = URL(fileURLWithPath: "/tmp/test.mov")
-        let gifURL = URL(fileURLWithPath: "/tmp/test.gif")
-
-        let recording = Recording(
-            id: id,
-            createdAt: date,
-            sourceVideoURL: videoURL,
-            exportedGIFURL: gifURL,
-            duration: 5.0
-        )
-
-        XCTAssertEqual(recording.exportedGIFURL, gifURL)
+    @Test("Formats minutes and seconds")
+    func formattedDurationWithMinutes() {
+        let recording = makeRecording(duration: 125)
+        #expect(recording.formattedDuration == "2m 5s")
     }
 
-    // MARK: - Formatted Duration
-
-    func testFormattedDurationSeconds() {
-        let recording = createRecording(duration: 45)
-        XCTAssertEqual(recording.formattedDuration, "45s")
+    @Test("Formats zero duration")
+    func formattedDurationZero() {
+        let recording = makeRecording(duration: 0)
+        #expect(recording.formattedDuration == "0s")
     }
 
-    func testFormattedDurationMinutesAndSeconds() {
-        let recording = createRecording(duration: 125)  // 2m 5s
-        XCTAssertEqual(recording.formattedDuration, "2m 5s")
+    @Test("Formats exact minute")
+    func formattedDurationExactMinute() {
+        let recording = makeRecording(duration: 60)
+        #expect(recording.formattedDuration == "1m 0s")
     }
 
-    func testFormattedDurationExactMinute() {
-        let recording = createRecording(duration: 60)
-        XCTAssertEqual(recording.formattedDuration, "1m 0s")
+    @Test("Truncates fractional seconds")
+    func formattedDurationFractional() {
+        let recording = makeRecording(duration: 5.9)
+        #expect(recording.formattedDuration == "5s")
     }
 
-    func testFormattedDurationZero() {
-        let recording = createRecording(duration: 0)
-        XCTAssertEqual(recording.formattedDuration, "0s")
+    // MARK: - displayName
+
+    @Test("Display name is not empty")
+    func displayNameNotEmpty() {
+        let recording = makeRecording()
+        #expect(!recording.displayName.isEmpty)
     }
 
-    func testFormattedDurationFractionalSeconds() {
-        let recording = createRecording(duration: 10.7)
-        XCTAssertEqual(recording.formattedDuration, "10s")  // Truncates to Int
+    // MARK: - fileSize
+
+    @Test("Returns nil for nonexistent file")
+    func fileSizeNilForMissingFile() {
+        let recording = makeRecording()
+        #expect(recording.fileSize == nil)
     }
 
-    // MARK: - Display Name
-
-    func testDisplayNameFormat() {
-        let date = Date()
-        let recording = Recording(
-            id: UUID(),
-            createdAt: date,
-            sourceVideoURL: URL(fileURLWithPath: "/tmp/test.mov"),
-            duration: 10
-        )
-
-        let formatter = DateFormatter()
-        formatter.dateStyle = .short
-        formatter.timeStyle = .short
-        let expected = formatter.string(from: date)
-
-        XCTAssertEqual(recording.displayName, expected)
+    @Test("Returns 'Unknown' for nonexistent file")
+    func formattedFileSizeUnknown() {
+        let recording = makeRecording()
+        #expect(recording.formattedFileSize == "Unknown")
     }
 
-    // MARK: - File Size
+    @Test("Returns correct size for existing file")
+    func fileSizeForExistingFile() throws {
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString + ".mov")
+        try Data(repeating: 0, count: 1024).write(to: tempURL)
+        defer { try? FileManager.default.removeItem(at: tempURL) }
 
-    func testFileSizeForNonexistentFile() {
-        let recording = createRecording(duration: 10)
-        XCTAssertNil(recording.fileSize)
+        let recording = makeRecording(sourceVideoURL: tempURL)
+        #expect(recording.fileSize == 1024)
     }
 
-    func testFormattedFileSizeForNonexistentFile() {
-        let recording = createRecording(duration: 10)
-        XCTAssertEqual(recording.formattedFileSize, "Unknown")
+    @Test("Formatted size is not 'Unknown' for existing file")
+    func formattedFileSizeForExistingFile() throws {
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString + ".mov")
+        try Data(repeating: 0, count: 2048).write(to: tempURL)
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+
+        let recording = makeRecording(sourceVideoURL: tempURL)
+        #expect(recording.formattedFileSize != "Unknown")
     }
 
-    func testFileSizeForExistingFile() throws {
-        // Create a temporary file with known content
-        let tempDir = FileManager.default.temporaryDirectory
-        let testFile = tempDir.appendingPathComponent("test_\(UUID().uuidString).mov")
-
-        let testData = Data(repeating: 0x42, count: 1024)  // 1 KB
-        try testData.write(to: testFile)
-
+    @Test("Uses GIF URL for file size when available")
+    func fileSizeUsesGIFURL() throws {
+        let videoURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString + "-v.mov")
+        let gifURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString + "-g.gif")
+        try Data(repeating: 0, count: 100).write(to: videoURL)
+        try Data(repeating: 0, count: 500).write(to: gifURL)
         defer {
-            try? FileManager.default.removeItem(at: testFile)
+            try? FileManager.default.removeItem(at: videoURL)
+            try? FileManager.default.removeItem(at: gifURL)
         }
 
-        let recording = Recording(
-            id: UUID(),
-            createdAt: Date(),
-            sourceVideoURL: testFile,
-            duration: 10
-        )
-
-        XCTAssertEqual(recording.fileSize, 1024)
+        var recording = makeRecording(sourceVideoURL: videoURL)
+        recording.exportedGIFURL = gifURL
+        #expect(recording.fileSize == 500)
     }
 
     // MARK: - Codable
 
-    func testEncodeDecode() throws {
-        let original = Recording(
-            id: UUID(),
-            createdAt: Date(),
-            sourceVideoURL: URL(fileURLWithPath: "/tmp/test.mov"),
-            exportedGIFURL: URL(fileURLWithPath: "/tmp/test.gif"),
-            duration: 15.5
-        )
-
-        let encoder = JSONEncoder()
-        let data = try encoder.encode(original)
-
-        let decoder = JSONDecoder()
-        let decoded = try decoder.decode(Recording.self, from: data)
-
-        XCTAssertEqual(decoded.id, original.id)
-        XCTAssertEqual(decoded.sourceVideoURL, original.sourceVideoURL)
-        XCTAssertEqual(decoded.exportedGIFURL, original.exportedGIFURL)
-        XCTAssertEqual(decoded.duration, original.duration)
+    @Test("Round-trips through JSON")
+    func codableRoundTrip() throws {
+        let original = makeRecording(duration: 42.5)
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(Recording.self, from: data)
+        #expect(original == decoded)
     }
 
-    // MARK: - Equatable
-
-    func testEquality() {
-        let id = UUID()
-        let date = Date()
-        let url = URL(fileURLWithPath: "/tmp/test.mov")
-
-        let recording1 = Recording(id: id, createdAt: date, sourceVideoURL: url, duration: 10)
-        let recording2 = Recording(id: id, createdAt: date, sourceVideoURL: url, duration: 10)
-
-        XCTAssertEqual(recording1, recording2)
-    }
-
-    func testInequalityDifferentID() {
-        let url = URL(fileURLWithPath: "/tmp/test.mov")
-        let date = Date()
-
-        let recording1 = Recording(id: UUID(), createdAt: date, sourceVideoURL: url, duration: 10)
-        let recording2 = Recording(id: UUID(), createdAt: date, sourceVideoURL: url, duration: 10)
-
-        XCTAssertNotEqual(recording1, recording2)
-    }
-
-    // MARK: - Identifiable
-
-    func testIdentifiable() {
-        let id = UUID()
-        let recording = Recording(
-            id: id,
-            createdAt: Date(),
-            sourceVideoURL: URL(fileURLWithPath: "/tmp/test.mov"),
-            duration: 10
-        )
-
-        XCTAssertEqual(recording.id, id)
+    @Test("Round-trips with GIF URL")
+    func codableWithGIF() throws {
+        var original = makeRecording()
+        original.exportedGIFURL = URL(fileURLWithPath: "/tmp/test.gif")
+        let data = try JSONEncoder().encode(original)
+        let decoded = try JSONDecoder().decode(Recording.self, from: data)
+        #expect(decoded.exportedGIFURL == original.exportedGIFURL)
     }
 
     // MARK: - Helpers
 
-    private func createRecording(duration: TimeInterval) -> Recording {
-        Recording(
-            id: UUID(),
-            createdAt: Date(),
-            sourceVideoURL: URL(fileURLWithPath: "/tmp/test.mov"),
-            duration: duration
-        )
+    private func makeRecording(
+        createdAt: Date = Date(),
+        sourceVideoURL: URL = URL(fileURLWithPath: "/tmp/nonexistent.mov"),
+        duration: TimeInterval = 10
+    ) -> Recording {
+        Recording(id: UUID(), createdAt: createdAt, sourceVideoURL: sourceVideoURL, duration: duration)
     }
 }

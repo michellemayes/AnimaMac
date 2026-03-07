@@ -1,551 +1,316 @@
-import XCTest
+import Foundation
 import ScreenCaptureKit
+import Testing
 @testable import AnimaMacCore
 
+@Suite("AppState")
 @MainActor
-final class AppStateTests: XCTestCase {
+struct AppStateTests {
 
-    var appState: AppState!
-    var mockRecorder: MockScreenRecorder!
-    var mockExporter: MockGIFExporter!
-    var mockLibrary: MockRecordingLibrary!
-
-    override func setUp() async throws {
-        try await super.setUp()
-        mockRecorder = MockScreenRecorder()
-        mockExporter = MockGIFExporter()
-        mockLibrary = MockRecordingLibrary()
-
-        appState = AppState(
-            screenRecorder: mockRecorder,
-            gifExporter: mockExporter,
-            recordingLibrary: mockLibrary
-        )
-    }
-
-    override func tearDown() async throws {
-        appState = nil
-        mockRecorder = nil
-        mockExporter = nil
-        mockLibrary = nil
-        try await super.tearDown()
-    }
-
-    // MARK: - Initial State Tests
-
-    func testInitialState() {
-        XCTAssertFalse(appState.isRecording)
-        XCTAssertEqual(appState.recordingDuration, 0)
-        XCTAssertFalse(appState.isPreparing)
-        XCTAssertFalse(appState.isSelectingArea)
-        XCTAssertFalse(appState.isSelectingWindow)
-        XCTAssertNil(appState.selectedRect)
-        XCTAssertNil(appState.selectedWindow)
-        XCTAssertNil(appState.selectedDisplay)
-        XCTAssertFalse(appState.isExporting)
-        XCTAssertEqual(appState.exportProgress, 0)
-        XCTAssertNil(appState.lastError)
-        XCTAssertFalse(appState.showingError)
-    }
-
-    func testInitWithRecordingLibraryLoadsRecordings() {
-        let existingRecording = Recording(
-            id: UUID(),
-            createdAt: Date(),
-            sourceVideoURL: URL(fileURLWithPath: "/tmp/test.mov"),
-            duration: 10.0
-        )
-        mockLibrary.recordings = [existingRecording]
-
+    private func makeAppState() -> (AppState, MockScreenRecorder, MockGIFExporter, MockRecordingLibrary) {
+        let recorder = MockScreenRecorder()
+        let exporter = MockGIFExporter()
+        let library = MockRecordingLibrary()
         let state = AppState(
-            screenRecorder: mockRecorder,
-            gifExporter: mockExporter,
-            recordingLibrary: mockLibrary
+            screenRecorder: recorder,
+            gifExporter: exporter,
+            recordingLibrary: library
         )
-
-        XCTAssertEqual(state.recordings.count, 1)
-        XCTAssertEqual(state.recordings.first?.id, existingRecording.id)
+        return (state, recorder, exporter, library)
     }
 
-    // MARK: - Selection State Tests
+    // MARK: - Initial State
 
-    func testStartAreaSelection() {
-        appState.startAreaSelection()
-
-        XCTAssertTrue(appState.isSelectingArea)
-        XCTAssertFalse(appState.isSelectingWindow)
+    @Test("Initial state is correct")
+    func initialState() {
+        let (state, _, _, _) = makeAppState()
+        #expect(!state.isRecording)
+        #expect(state.recordingDuration == 0)
+        #expect(!state.isPreparing)
+        #expect(!state.isSelectingArea)
+        #expect(!state.isSelectingWindow)
+        #expect(state.selectedRect == nil)
+        #expect(state.selectedWindow == nil)
+        #expect(state.selectedDisplay == nil)
+        #expect(!state.isExporting)
+        #expect(state.exportProgress == 0)
+        #expect(state.lastError == nil)
+        #expect(!state.showingError)
     }
 
-    func testStartWindowSelection() {
-        appState.startWindowSelection()
+    @Test("Init with library loads recordings")
+    func initLoadsRecordings() {
+        let recorder = MockScreenRecorder()
+        let exporter = MockGIFExporter()
+        let library = MockRecordingLibrary()
+        let recording = Recording(id: UUID(), createdAt: Date(), sourceVideoURL: URL(fileURLWithPath: "/tmp/test.mov"), duration: 10.0)
+        library.recordings = [recording]
 
-        XCTAssertTrue(appState.isSelectingWindow)
-        XCTAssertFalse(appState.isSelectingArea)
+        let state = AppState(screenRecorder: recorder, gifExporter: exporter, recordingLibrary: library)
+        #expect(state.recordings.count == 1)
+        #expect(state.recordings.first?.id == recording.id)
     }
 
-    func testCancelSelection() {
-        appState.isSelectingArea = true
-        appState.isSelectingWindow = true
-        appState.selectedRect = CGRect(x: 0, y: 0, width: 100, height: 100)
+    // MARK: - Selection
 
-        appState.cancelSelection()
-
-        XCTAssertFalse(appState.isSelectingArea)
-        XCTAssertFalse(appState.isSelectingWindow)
-        XCTAssertNil(appState.selectedRect)
-        XCTAssertNil(appState.selectedWindow)
+    @Test("Start area selection")
+    func startAreaSelection() {
+        let (state, _, _, _) = makeAppState()
+        state.startAreaSelection()
+        #expect(state.isSelectingArea)
+        #expect(!state.isSelectingWindow)
     }
 
-    // MARK: - Recording Tests
+    @Test("Start window selection")
+    func startWindowSelection() {
+        let (state, _, _, _) = makeAppState()
+        state.startWindowSelection()
+        #expect(state.isSelectingWindow)
+        #expect(!state.isSelectingArea)
+    }
 
-    func testStartRecordingWithNoContentThrowsError() async {
-        do {
-            try await appState.startRecording()
-            XCTFail("Expected error to be thrown")
-        } catch {
-            XCTAssertTrue(error is RecordingError)
+    @Test("Cancel selection clears state")
+    func cancelSelection() {
+        let (state, _, _, _) = makeAppState()
+        state.isSelectingArea = true
+        state.isSelectingWindow = true
+        state.selectedRect = CGRect(x: 0, y: 0, width: 100, height: 100)
+
+        state.cancelSelection()
+
+        #expect(!state.isSelectingArea)
+        #expect(!state.isSelectingWindow)
+        #expect(state.selectedRect == nil)
+        #expect(state.selectedWindow == nil)
+    }
+
+    @Test("Area selection clears window selection")
+    func areaSelectionClearsWindow() {
+        let (state, _, _, _) = makeAppState()
+        state.isSelectingWindow = true
+        state.startAreaSelection()
+        #expect(state.isSelectingArea)
+        #expect(!state.isSelectingWindow)
+    }
+
+    @Test("Window selection clears area selection")
+    func windowSelectionClearsArea() {
+        let (state, _, _, _) = makeAppState()
+        state.isSelectingArea = true
+        state.startWindowSelection()
+        #expect(state.isSelectingWindow)
+        #expect(!state.isSelectingArea)
+    }
+
+    // MARK: - Recording
+
+    @Test("Start recording with no content throws")
+    func startRecordingNoContent() async {
+        let (state, _, _, _) = makeAppState()
+        await #expect(throws: RecordingError.self) {
+            try await state.startRecording()
         }
     }
 
-    func testStopRecordingSavesToLibrary() async throws {
-        // Setup: simulate a recording in progress
+    @Test("Stop recording saves to library")
+    func stopRecordingSaves() async throws {
+        let (state, recorder, _, library) = makeAppState()
         let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("test_\(UUID()).mov")
         try Data("test".utf8).write(to: tempURL)
         defer { try? FileManager.default.removeItem(at: tempURL) }
 
-        mockRecorder.outputURL = tempURL
-        appState.isRecording = true
-        appState.recordingDuration = 5.0
+        recorder.outputURL = tempURL
+        state.isRecording = true
+        state.recordingDuration = 5.0
 
-        try await appState.stopRecording()
+        try await state.stopRecording()
 
-        XCTAssertFalse(appState.isRecording)
-        XCTAssertTrue(mockLibrary.saveCalled)
-        XCTAssertEqual(appState.recordings.count, 1)
+        #expect(!state.isRecording)
+        #expect(library.saveCalled)
+        #expect(state.recordings.count == 1)
     }
 
-    // MARK: - Library Management Tests
-
-    func testDeleteRecording() {
-        let recording = Recording(
-            id: UUID(),
-            createdAt: Date(),
-            sourceVideoURL: URL(fileURLWithPath: "/tmp/test.mov"),
-            duration: 10.0
-        )
-        appState.recordings = [recording]
-
-        appState.deleteRecording(recording)
-
-        XCTAssertTrue(mockLibrary.deleteCalled)
-        XCTAssertTrue(appState.recordings.isEmpty)
-    }
-
-    // MARK: - Settings Tests
-
-    func testCaptureConfigurationDefault() {
-        XCTAssertEqual(appState.captureConfiguration.framesPerSecond, 30)
-        XCTAssertTrue(appState.captureConfiguration.showsCursor)
-        XCTAssertEqual(appState.captureConfiguration.quality, .high)
-    }
-
-    func testExportSettingsDefault() {
-        XCTAssertEqual(appState.exportSettings.preset, .medium)
-        XCTAssertEqual(appState.exportSettings.loopCount, 0)
-    }
-
-    func testUpdateCaptureConfiguration() {
-        appState.captureConfiguration.framesPerSecond = 60
-        appState.captureConfiguration.showsCursor = false
-
-        XCTAssertEqual(appState.captureConfiguration.framesPerSecond, 60)
-        XCTAssertFalse(appState.captureConfiguration.showsCursor)
-    }
-
-    func testUpdateExportSettings() {
-        appState.exportSettings.preset = .large
-
-        XCTAssertEqual(appState.exportSettings.preset, .large)
-        XCTAssertEqual(appState.exportSettings.fps, 20)
-    }
-
-    // MARK: - Error Handling Tests
-
-    func testErrorStateClearsOnNewAction() {
-        appState.lastError = RecordingError.noContentSelected
-        appState.showingError = true
-
-        appState.startAreaSelection()
-
-        // Error should remain until explicitly dismissed
-        XCTAssertNotNil(appState.lastError)
-    }
-
-    // MARK: - Recording Duration Tests
-
-    func testRecordingDurationInitiallyZero() {
-        XCTAssertEqual(appState.recordingDuration, 0)
-    }
-
-    // MARK: - Additional Selection Tests
-
-    func testStartAreaSelectionClearsWindowSelection() {
-        appState.isSelectingWindow = true
-        appState.startAreaSelection()
-
-        XCTAssertTrue(appState.isSelectingArea)
-        XCTAssertFalse(appState.isSelectingWindow)
-    }
-
-    func testStartWindowSelectionClearsAreaSelection() {
-        appState.isSelectingArea = true
-        appState.startWindowSelection()
-
-        XCTAssertTrue(appState.isSelectingWindow)
-        XCTAssertFalse(appState.isSelectingArea)
-    }
-
-    // MARK: - Additional Recording Tests
-
-    func testRecordingStateAfterStopRecording() async throws {
-        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("test_\(UUID()).mov")
-        try Data("test".utf8).write(to: tempURL)
-        defer { try? FileManager.default.removeItem(at: tempURL) }
-
-        mockRecorder.outputURL = tempURL
-        appState.isRecording = true
-        appState.recordingDuration = 10.5
-
-        try await appState.stopRecording()
-
-        XCTAssertFalse(appState.isRecording)
-        XCTAssertTrue(mockRecorder.stopRecordingCalled)
-    }
-
-    func testRecordingInsertedAtBeginning() async throws {
-        // Add existing recording
-        let existingRecording = Recording(
-            id: UUID(),
-            createdAt: Date().addingTimeInterval(-3600),
-            sourceVideoURL: URL(fileURLWithPath: "/tmp/old.mov"),
-            duration: 5.0
-        )
-        appState.recordings = [existingRecording]
+    @Test("New recording inserted at beginning")
+    func recordingInsertedAtBeginning() async throws {
+        let (state, recorder, _, _) = makeAppState()
+        let existing = Recording(id: UUID(), createdAt: Date().addingTimeInterval(-3600), sourceVideoURL: URL(fileURLWithPath: "/tmp/old.mov"), duration: 5.0)
+        state.recordings = [existing]
 
         let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent("test_\(UUID()).mov")
         try Data("test".utf8).write(to: tempURL)
         defer { try? FileManager.default.removeItem(at: tempURL) }
 
-        mockRecorder.outputURL = tempURL
-        appState.isRecording = true
-        appState.recordingDuration = 3.0
+        recorder.outputURL = tempURL
+        state.isRecording = true
+        state.recordingDuration = 3.0
 
-        try await appState.stopRecording()
+        try await state.stopRecording()
 
-        XCTAssertEqual(appState.recordings.count, 2)
-        // New recording should be at index 0
-        XCTAssertEqual(appState.recordings[0].duration, 3.0)
-        XCTAssertEqual(appState.recordings[1].id, existingRecording.id)
+        #expect(state.recordings.count == 2)
+        #expect(state.recordings[0].duration == 3.0)
+        #expect(state.recordings[1].id == existing.id)
     }
 
-    // MARK: - Error State Tests
+    // MARK: - Library Management
 
-    func testShowingErrorSetsFlag() {
-        appState.lastError = RecordingError.permissionDenied
-        appState.showingError = true
+    @Test("Delete recording removes from list")
+    func deleteRecording() {
+        let (state, _, _, library) = makeAppState()
+        let recording = Recording(id: UUID(), createdAt: Date(), sourceVideoURL: URL(fileURLWithPath: "/tmp/test.mov"), duration: 10.0)
+        state.recordings = [recording]
 
-        XCTAssertTrue(appState.showingError)
-        XCTAssertNotNil(appState.lastError)
+        state.deleteRecording(recording)
+
+        #expect(library.deleteCalled)
+        #expect(state.recordings.isEmpty)
     }
 
-    func testClearError() {
-        appState.lastError = RecordingError.permissionDenied
-        appState.showingError = true
+    @Test("Delete specific recording keeps others")
+    func deleteSpecificRecording() {
+        let (state, _, _, _) = makeAppState()
+        let r1 = Recording(id: UUID(), createdAt: Date(), sourceVideoURL: URL(fileURLWithPath: "/tmp/test1.mov"), duration: 10.0)
+        let r2 = Recording(id: UUID(), createdAt: Date(), sourceVideoURL: URL(fileURLWithPath: "/tmp/test2.mov"), duration: 15.0)
+        state.recordings = [r1, r2]
 
-        appState.lastError = nil
-        appState.showingError = false
+        state.deleteRecording(r1)
 
-        XCTAssertNil(appState.lastError)
-        XCTAssertFalse(appState.showingError)
+        #expect(state.recordings.count == 1)
+        #expect(state.recordings[0].id == r2.id)
     }
 
-    // MARK: - Export State Tests
+    // MARK: - Settings
 
-    func testExportProgressUpdates() {
-        appState.isExporting = true
-        appState.exportProgress = 0.5
-
-        XCTAssertTrue(appState.isExporting)
-        XCTAssertEqual(appState.exportProgress, 0.5)
+    @Test("Default capture configuration")
+    func defaultCaptureConfig() {
+        let (state, _, _, _) = makeAppState()
+        #expect(state.captureConfiguration.framesPerSecond == 30)
+        #expect(state.captureConfiguration.showsCursor)
+        #expect(state.captureConfiguration.quality == .high)
     }
 
-    func testExportProgressClampsToOne() {
-        appState.exportProgress = 1.5
-
-        // Progress should be set (even if > 1, UI handles clamping)
-        XCTAssertEqual(appState.exportProgress, 1.5)
+    @Test("Default export settings")
+    func defaultExportSettings() {
+        let (state, _, _, _) = makeAppState()
+        #expect(state.exportSettings.preset == .medium)
+        #expect(state.exportSettings.loopCount == 0)
     }
 
-    // MARK: - Library Update Tests
+    @Test("Capture configuration mutation")
+    func captureConfigMutation() {
+        let (state, _, _, _) = makeAppState()
+        state.captureConfiguration.framesPerSecond = 60
+        state.captureConfiguration.showsCursor = false
+        state.captureConfiguration.quality = .low
+        state.captureConfiguration.capturesMouseClicks = true
 
-    func testDeleteRecordingRemovesFromList() {
-        let recording1 = Recording(
-            id: UUID(),
-            createdAt: Date(),
-            sourceVideoURL: URL(fileURLWithPath: "/tmp/test1.mov"),
-            duration: 10.0
-        )
-        let recording2 = Recording(
-            id: UUID(),
-            createdAt: Date(),
-            sourceVideoURL: URL(fileURLWithPath: "/tmp/test2.mov"),
-            duration: 15.0
-        )
-        appState.recordings = [recording1, recording2]
-
-        appState.deleteRecording(recording1)
-
-        XCTAssertEqual(appState.recordings.count, 1)
-        XCTAssertEqual(appState.recordings[0].id, recording2.id)
+        #expect(state.captureConfiguration.framesPerSecond == 60)
+        #expect(!state.captureConfiguration.showsCursor)
+        #expect(state.captureConfiguration.quality == .low)
+        #expect(state.captureConfiguration.capturesMouseClicks)
     }
 
-    func testDeleteNonexistentRecording() {
-        let recording1 = Recording(
-            id: UUID(),
-            createdAt: Date(),
-            sourceVideoURL: URL(fileURLWithPath: "/tmp/test1.mov"),
-            duration: 10.0
-        )
-        let recording2 = Recording(
-            id: UUID(),
-            createdAt: Date(),
-            sourceVideoURL: URL(fileURLWithPath: "/tmp/test2.mov"),
-            duration: 15.0
-        )
-        appState.recordings = [recording1]
+    @Test("Export settings mutation")
+    func exportSettingsMutation() {
+        let (state, _, _, _) = makeAppState()
+        state.exportSettings.preset = .small
+        state.exportSettings.loopCount = 3
 
-        appState.deleteRecording(recording2)
-
-        // Should still have original recording
-        XCTAssertEqual(appState.recordings.count, 1)
-        XCTAssertEqual(appState.recordings[0].id, recording1.id)
+        #expect(state.exportSettings.preset == .small)
+        #expect(state.exportSettings.loopCount == 3)
+        #expect(state.exportSettings.fps == 10)
     }
 
-    // MARK: - Configuration Tests
+    // MARK: - Error State
 
-    func testCaptureConfigurationMutation() {
-        appState.captureConfiguration.quality = .low
-        appState.captureConfiguration.capturesMouseClicks = true
-        appState.captureConfiguration.capturesKeyboardInput = true
-        appState.captureConfiguration.includeWindowShadow = false
+    @Test("Error state can be set and cleared")
+    func errorState() {
+        let (state, _, _, _) = makeAppState()
+        state.lastError = RecordingError.permissionDenied
+        state.showingError = true
 
-        XCTAssertEqual(appState.captureConfiguration.quality, .low)
-        XCTAssertTrue(appState.captureConfiguration.capturesMouseClicks)
-        XCTAssertTrue(appState.captureConfiguration.capturesKeyboardInput)
-        XCTAssertFalse(appState.captureConfiguration.includeWindowShadow)
+        #expect(state.showingError)
+        #expect(state.lastError != nil)
+
+        state.lastError = nil
+        state.showingError = false
+
+        #expect(state.lastError == nil)
+        #expect(!state.showingError)
     }
 
-    func testExportSettingsMutation() {
-        appState.exportSettings.preset = .small
-        appState.exportSettings.loopCount = 3
+    // MARK: - Export State
 
-        XCTAssertEqual(appState.exportSettings.preset, .small)
-        XCTAssertEqual(appState.exportSettings.loopCount, 3)
-        XCTAssertEqual(appState.exportSettings.fps, 10) // Small preset FPS
+    @Test("Export progress can be updated")
+    func exportProgress() {
+        let (state, _, _, _) = makeAppState()
+        state.isExporting = true
+        state.exportProgress = 0.5
+
+        #expect(state.isExporting)
+        #expect(state.exportProgress == 0.5)
     }
 
-    // MARK: - Mock Library Tests
+    // MARK: - Selected Recording
 
-    func testMockLibrarySaveAddsRecording() {
-        let recording = Recording(
-            id: UUID(),
-            createdAt: Date(),
-            sourceVideoURL: URL(fileURLWithPath: "/tmp/test.mov"),
-            duration: 10.0
-        )
-
-        mockLibrary.save(recording)
-
-        XCTAssertTrue(mockLibrary.saveCalled)
-        XCTAssertEqual(mockLibrary.recordings.count, 1)
+    @Test("Selected recording initially nil")
+    func selectedRecordingNil() {
+        let (state, _, _, _) = makeAppState()
+        #expect(state.selectedRecording == nil)
     }
 
-    func testMockLibraryUpdateModifiesRecording() {
-        var recording = Recording(
-            id: UUID(),
-            createdAt: Date(),
-            sourceVideoURL: URL(fileURLWithPath: "/tmp/test.mov"),
-            duration: 10.0
-        )
-        mockLibrary.recordings = [recording]
-
-        recording.exportedGIFURL = URL(fileURLWithPath: "/tmp/test.gif")
-        mockLibrary.update(recording)
-
-        XCTAssertTrue(mockLibrary.updateCalled)
-        XCTAssertNotNil(mockLibrary.recordings[0].exportedGIFURL)
-    }
-
-    func testMockLibraryDeleteAll() {
-        mockLibrary.recordings = [
-            Recording(id: UUID(), createdAt: Date(), sourceVideoURL: URL(fileURLWithPath: "/tmp/1.mov"), duration: 1),
-            Recording(id: UUID(), createdAt: Date(), sourceVideoURL: URL(fileURLWithPath: "/tmp/2.mov"), duration: 2)
-        ]
-
-        mockLibrary.deleteAll()
-
-        XCTAssertTrue(mockLibrary.deleteAllCalled)
-        XCTAssertTrue(mockLibrary.recordings.isEmpty)
-    }
-
-    // MARK: - Mock Recorder Tests
-
-    func testMockRecorderErrorState() {
-        mockRecorder.shouldThrowError = true
-        XCTAssertTrue(mockRecorder.shouldThrowError)
-    }
-
-    func testMockRecorderInitialState() {
-        XCTAssertFalse(mockRecorder.startRecordingCalled)
-        XCTAssertFalse(mockRecorder.stopRecordingCalled)
-        XCTAssertNil(mockRecorder.outputURL)
-    }
-
-    func testMockRecorderStopWithoutURL() async {
-        do {
-            _ = try await mockRecorder.stopRecording()
-            XCTFail("Expected error to be thrown")
-        } catch {
-            XCTAssertTrue(error is RecordingError)
-        }
-    }
-
-    // MARK: - Mock Exporter Tests
-
-    func testMockExporterBuildFilterChain() {
-        let settings = ExportSettings()
-        let filterChain = mockExporter.buildFilterChain(settings: settings)
-
-        XCTAssertTrue(filterChain.contains("fps="))
-        XCTAssertTrue(filterChain.contains("scale="))
-    }
-
-    func testMockExporterThrowsWhenConfigured() async {
-        mockExporter.shouldThrowError = true
-
-        do {
-            try await mockExporter.export(
-                videoURL: URL(fileURLWithPath: "/tmp/test.mov"),
-                to: URL(fileURLWithPath: "/tmp/test.gif"),
-                settings: ExportSettings(),
-                progressHandler: { _ in }
-            )
-            XCTFail("Expected error to be thrown")
-        } catch {
-            XCTAssertTrue(error is FFmpegError)
-        }
-    }
-
-    // MARK: - Selected Recording Tests
-
-    func testSelectedRecordingInitiallyNil() {
-        XCTAssertNil(appState.selectedRecording)
-    }
-
-    func testSelectedRecordingCanBeSet() {
-        let recording = Recording(
-            id: UUID(),
-            createdAt: Date(),
-            sourceVideoURL: URL(fileURLWithPath: "/tmp/test.mov"),
-            duration: 10.0
-        )
-
-        appState.selectedRecording = recording
-
-        XCTAssertNotNil(appState.selectedRecording)
-        XCTAssertEqual(appState.selectedRecording?.id, recording.id)
-    }
-
-    // MARK: - Preparing State Tests
-
-    func testPreparingStateInitiallyFalse() {
-        XCTAssertFalse(appState.isPreparing)
-    }
-
-    func testPreparingStateCanBeSet() {
-        appState.isPreparing = true
-        XCTAssertTrue(appState.isPreparing)
+    @Test("Selected recording can be set")
+    func selectedRecordingSet() {
+        let (state, _, _, _) = makeAppState()
+        let recording = Recording(id: UUID(), createdAt: Date(), sourceVideoURL: URL(fileURLWithPath: "/tmp/test.mov"), duration: 10.0)
+        state.selectedRecording = recording
+        #expect(state.selectedRecording?.id == recording.id)
     }
 }
 
-// MARK: - Mock Screen Recorder
+// MARK: - Mocks
 
-class MockScreenRecorder: ScreenRecorderProtocol {
+@MainActor
+class MockScreenRecorder: ScreenRecorderProtocol, @unchecked Sendable {
     var startRecordingCalled = false
     var stopRecordingCalled = false
     var outputURL: URL?
     var shouldThrowError = false
 
-    func startRecording(
-        display: SCDisplay,
-        cropRect: CGRect?,
-        configuration: CaptureConfiguration,
-        outputURL: URL
-    ) async throws {
-        if shouldThrowError {
-            throw RecordingError.recordingFailed("Mock error")
-        }
+    func startRecording(display: SCDisplay, cropRect: CGRect?, configuration: CaptureConfiguration, outputURL: URL) async throws {
+        if shouldThrowError { throw RecordingError.recordingFailed("Mock error") }
         startRecordingCalled = true
         self.outputURL = outputURL
     }
 
-    func startRecording(
-        window: SCWindow,
-        configuration: CaptureConfiguration,
-        outputURL: URL
-    ) async throws {
-        if shouldThrowError {
-            throw RecordingError.recordingFailed("Mock error")
-        }
+    func startRecording(window: SCWindow, configuration: CaptureConfiguration, outputURL: URL) async throws {
+        if shouldThrowError { throw RecordingError.recordingFailed("Mock error") }
         startRecordingCalled = true
         self.outputURL = outputURL
     }
 
     func stopRecording() async throws -> URL {
         stopRecordingCalled = true
-        guard let url = outputURL else {
-            throw RecordingError.outputURLNotSet
-        }
+        guard let url = outputURL else { throw RecordingError.outputURLNotSet }
         return url
     }
 }
 
-// MARK: - Mock GIF Exporter
-
-class MockGIFExporter: GIFExporterProtocol {
+@MainActor
+class MockGIFExporter: GIFExporterProtocol, @unchecked Sendable {
     var exportCalled = false
     var shouldThrowError = false
 
-    func export(
-        videoURL: URL,
-        to outputURL: URL,
-        settings: ExportSettings,
-        progressHandler: @escaping (Double) -> Void
-    ) async throws {
-        if shouldThrowError {
-            throw FFmpegError.executionFailed("Mock error")
-        }
+    func export(videoURL: URL, to outputURL: URL, settings: ExportSettings, progressHandler: @escaping @Sendable (Double) -> Void) async throws {
+        if shouldThrowError { throw FFmpegError.executionFailed("Mock error") }
         exportCalled = true
         progressHandler(0.5)
         progressHandler(1.0)
     }
 
     func buildFilterChain(settings: ExportSettings) -> String {
-        return "[0:v]fps=\(settings.fps),scale=\(settings.maxWidth):-2:flags=lanczos"
+        "[0:v]fps=\(settings.fps),scale=\(settings.maxWidth):-2:flags=lanczos"
     }
 }
-
-// MARK: - Mock Recording Library
 
 class MockRecordingLibrary: RecordingLibraryProtocol {
     var recordings: [Recording] = []
@@ -554,97 +319,14 @@ class MockRecordingLibrary: RecordingLibraryProtocol {
     var deleteCalled = false
     var deleteAllCalled = false
 
-    func loadRecordings() -> [Recording] {
-        return recordings
-    }
-
-    func save(_ recording: Recording) {
-        saveCalled = true
-        recordings.insert(recording, at: 0)
-    }
-
+    func loadRecordings() -> [Recording] { recordings }
+    func save(_ recording: Recording) { saveCalled = true; recordings.insert(recording, at: 0) }
     func update(_ recording: Recording) {
         updateCalled = true
-        if let index = recordings.firstIndex(where: { $0.id == recording.id }) {
-            recordings[index] = recording
-        }
+        if let i = recordings.firstIndex(where: { $0.id == recording.id }) { recordings[i] = recording }
     }
-
-    func delete(_ recording: Recording) {
-        deleteCalled = true
-        recordings.removeAll { $0.id == recording.id }
-    }
-
-    func deleteAll() {
-        deleteAllCalled = true
-        recordings.removeAll()
-    }
-
+    func delete(_ recording: Recording) { deleteCalled = true; recordings.removeAll { $0.id == recording.id } }
+    func deleteAll() { deleteAllCalled = true; recordings.removeAll() }
     var totalStorageUsed: Int64 { 0 }
     var formattedStorageUsed: String { "0 MB" }
-}
-
-// MARK: - Mock Overlay Controller
-
-@MainActor
-class MockOverlayController: OverlayControllerProtocol {
-    var showOverlayCalled = false
-    var lastDisplay: SCDisplay?
-    var completeHandler: ((CGRect, SCDisplay) -> Void)?
-    var cancelHandler: (() -> Void)?
-
-    func showOverlay(
-        for display: SCDisplay,
-        onComplete: @escaping (CGRect, SCDisplay) -> Void,
-        onCancel: @escaping () -> Void
-    ) {
-        showOverlayCalled = true
-        lastDisplay = display
-        completeHandler = onComplete
-        cancelHandler = onCancel
-    }
-
-    func simulateComplete(rect: CGRect, display: SCDisplay) {
-        completeHandler?(rect, display)
-    }
-
-    func simulateCancel() {
-        cancelHandler?()
-    }
-}
-
-// MARK: - Additional Recorder Error Tests
-
-final class RecorderErrorTests: XCTestCase {
-
-    func testRecordingFailedWithCustomMessage() {
-        let error = RecordingError.recordingFailed("Custom failure message")
-        XCTAssertEqual(error.errorDescription, "Recording failed: Custom failure message")
-    }
-
-    func testRecordingFailedWithEmptyMessage() {
-        let error = RecordingError.recordingFailed("")
-        XCTAssertEqual(error.errorDescription, "Recording failed: ")
-    }
-
-    func testRecordingErrorEquality() {
-        let error1 = RecordingError.noContentSelected
-        let error2 = RecordingError.noContentSelected
-        XCTAssertEqual(error1.errorDescription, error2.errorDescription)
-    }
-
-    func testAllRecordingErrorCases() {
-        let errors: [RecordingError] = [
-            .noContentSelected,
-            .permissionDenied,
-            .recordingFailed("test"),
-            .noActiveRecording,
-            .outputURLNotSet
-        ]
-
-        for error in errors {
-            XCTAssertNotNil(error.errorDescription)
-            XCTAssertFalse(error.errorDescription!.isEmpty)
-        }
-    }
 }

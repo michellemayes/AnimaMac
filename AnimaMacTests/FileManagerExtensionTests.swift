@@ -1,103 +1,48 @@
-import XCTest
+import Foundation
+import Testing
 @testable import AnimaMacCore
 
-final class FileManagerExtensionTests: XCTestCase {
+@Suite("FileManager Extensions")
+struct FileManagerExtensionTests {
 
-    // MARK: - Directory Tests
+    @Test("AnimaMac directory exists and contains expected path components")
+    func animaMacDirectory() {
+        let dir = FileManager.animaMacDirectory
+        #expect(FileManager.default.fileExists(atPath: dir.path))
+        #expect(dir.path.contains("AnimaMac"))
+        #expect(dir.path.contains("Application Support"))
 
-    func testAnimaMacDirectoryExists() {
-        let directory = FileManager.animaMacDirectory
-
-        XCTAssertTrue(FileManager.default.fileExists(atPath: directory.path))
-        XCTAssertTrue(directory.path.contains("AnimaMac"))
-        XCTAssertTrue(directory.path.contains("Application Support"))
+        var isDir: ObjCBool = false
+        FileManager.default.fileExists(atPath: dir.path, isDirectory: &isDir)
+        #expect(isDir.boolValue)
     }
 
-    func testAnimaMacDirectoryIsDirectory() {
-        let directory = FileManager.animaMacDirectory
-
-        var isDirectory: ObjCBool = false
-        let exists = FileManager.default.fileExists(atPath: directory.path, isDirectory: &isDirectory)
-
-        XCTAssertTrue(exists)
-        XCTAssertTrue(isDirectory.boolValue)
+    @Test("Recordings directory exists and is subdirectory")
+    func recordingsDirectory() {
+        let dir = FileManager.animaMacRecordingsDirectory
+        #expect(FileManager.default.fileExists(atPath: dir.path))
+        #expect(dir.path.contains("recordings"))
+        #expect(dir.path.hasPrefix(FileManager.animaMacDirectory.path))
     }
 
-    func testAnimaMacRecordingsDirectoryExists() {
-        let directory = FileManager.animaMacRecordingsDirectory
-
-        XCTAssertTrue(FileManager.default.fileExists(atPath: directory.path))
-        XCTAssertTrue(directory.path.contains("recordings"))
+    @Test("FFmpeg binary URL path")
+    func ffmpegBinaryURL() {
+        let url = FileManager.ffmpegBinaryURL
+        #expect(url.path.contains("AnimaMac"))
+        #expect(url.lastPathComponent == "ffmpeg")
+        #expect(url.path.hasPrefix(FileManager.animaMacDirectory.path))
     }
 
-    func testAnimaMacRecordingsDirectoryIsSubdirectory() {
-        let parentDir = FileManager.animaMacDirectory
-        let recordingsDir = FileManager.animaMacRecordingsDirectory
-
-        XCTAssertTrue(recordingsDir.path.hasPrefix(parentDir.path))
+    @Test("isFFmpegAvailable returns bool")
+    func isFFmpegAvailable() {
+        let available = FileManager.isFFmpegAvailable
+        #expect(available == true || available == false)
     }
 
-    // MARK: - FFmpeg Path Tests
-
-    func testFFmpegBinaryURLPath() {
-        let ffmpegURL = FileManager.ffmpegBinaryURL
-
-        XCTAssertTrue(ffmpegURL.path.contains("AnimaMac"))
-        XCTAssertTrue(ffmpegURL.lastPathComponent == "ffmpeg")
-    }
-
-    func testFFmpegBinaryURLIsUnderAnimaMacDirectory() {
-        let parentDir = FileManager.animaMacDirectory
-        let ffmpegURL = FileManager.ffmpegBinaryURL
-
-        XCTAssertTrue(ffmpegURL.path.hasPrefix(parentDir.path))
-    }
-
-    func testIsFFmpegAvailableReturnsBool() {
-        // Just verify it returns a boolean without crashing
-        let isAvailable = FileManager.isFFmpegAvailable
-        XCTAssertTrue(isAvailable == true || isAvailable == false)
-    }
-
-    // MARK: - Directory Creation Tests
-
-    func testAnimaMacDirectoryCreatesIfNotExists() {
-        // Get the directory (which creates it if needed)
-        let directory = FileManager.animaMacDirectory
-
-        // Verify it exists
-        XCTAssertTrue(FileManager.default.fileExists(atPath: directory.path))
-    }
-
-    func testRecordingsDirectoryCreatesIfNotExists() {
-        // Get the directory (which creates it if needed)
-        let directory = FileManager.animaMacRecordingsDirectory
-
-        // Verify it exists
-        XCTAssertTrue(FileManager.default.fileExists(atPath: directory.path))
-    }
-
-    // MARK: - Path Consistency Tests
-
-    func testDirectoryPathsAreConsistent() {
-        // Multiple calls should return the same paths
-        let dir1 = FileManager.animaMacDirectory
-        let dir2 = FileManager.animaMacDirectory
-
-        XCTAssertEqual(dir1, dir2)
-    }
-
-    func testRecordingsDirectoryPathsAreConsistent() {
-        let dir1 = FileManager.animaMacRecordingsDirectory
-        let dir2 = FileManager.animaMacRecordingsDirectory
-
-        XCTAssertEqual(dir1, dir2)
-    }
-
-    func testFFmpegPathIsConsistent() {
-        let url1 = FileManager.ffmpegBinaryURL
-        let url2 = FileManager.ffmpegBinaryURL
-
-        XCTAssertEqual(url1, url2)
+    @Test("Paths are consistent across calls")
+    func pathConsistency() {
+        #expect(FileManager.animaMacDirectory == FileManager.animaMacDirectory)
+        #expect(FileManager.animaMacRecordingsDirectory == FileManager.animaMacRecordingsDirectory)
+        #expect(FileManager.ffmpegBinaryURL == FileManager.ffmpegBinaryURL)
     }
 }
