@@ -6,13 +6,16 @@ let package = Package(
     platforms: [
         .macOS(.v14)
     ],
+    products: [
+        .library(name: "AnimaMacCore", targets: ["AnimaMacCore"])
+    ],
     targets: [
-        .executableTarget(
-            name: "AnimaMac",
+        // Core library with all the business logic (testable)
+        .target(
+            name: "AnimaMacCore",
             path: "AnimaMac",
-            exclude: ["Info.plist", "AnimaMac.entitlements", "Resources"],
+            exclude: ["Info.plist", "AnimaMac.entitlements", "Resources", "App/AnimaMacApp.swift"],
             sources: [
-                "App/AnimaMacApp.swift",
                 "App/AppState.swift",
                 "Capture/ScreenRecorder.swift",
                 "Capture/CaptureConfiguration.swift",
@@ -25,8 +28,15 @@ let package = Package(
                 "Storage/FileManager+AnimaMac.swift",
                 "UI/MenuBarView.swift",
                 "UI/RecordingOverlay.swift",
-                "UI/SettingsView.swift"
+                "UI/SettingsView.swift",
+                "Utilities/Formatters.swift"
             ]
+        ),
+        // Test target
+        .testTarget(
+            name: "AnimaMacTests",
+            dependencies: ["AnimaMacCore"],
+            path: "AnimaMacTests"
         )
     ]
 )

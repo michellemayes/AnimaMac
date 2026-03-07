@@ -22,6 +22,7 @@
 		A1000000D /* RecordingLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000001D /* RecordingLibrary.swift */; };
 		A1000000E /* FileManager+AnimaMac.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000001E /* FileManager+AnimaMac.swift */; };
 		A1000000F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1000001F /* Assets.xcassets */; };
+		A10000100 /* Formatters.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000101 /* Formatters.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -43,6 +44,7 @@
 		A1000001F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A10000021 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A10000022 /* AnimaMac.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AnimaMac.entitlements; sourceTree = "<group>"; };
+		A10000101 /* Formatters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Formatters.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -72,6 +74,7 @@
 				A10000045 /* Export */,
 				A10000046 /* Storage */,
 				A10000047 /* UI */,
+				A10000049 /* Utilities */,
 				A10000048 /* Resources */,
 				A10000021 /* Info.plist */,
 				A10000022 /* AnimaMac.entitlements */,
@@ -142,6 +145,14 @@
 				A1000001F /* Assets.xcassets */,
 			);
 			path = Resources;
+			sourceTree = "<group>";
+		};
+		A10000049 /* Utilities */ = {
+			isa = PBXGroup;
+			children = (
+				A10000101 /* Formatters.swift */,
+			);
+			path = Utilities;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -227,6 +238,7 @@
 				A1000000C /* Recording.swift in Sources */,
 				A1000000D /* RecordingLibrary.swift in Sources */,
 				A1000000E /* FileManager+AnimaMac.swift in Sources */,
+				A10000100 /* Formatters.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -3,7 +3,28 @@ import ScreenCaptureKit
 import AVFoundation
 import CoreGraphics
 
-final class ScreenRecorder: NSObject, ObservableObject {
+// MARK: - Protocol
+
+protocol ScreenRecorderProtocol: AnyObject {
+    func startRecording(
+        display: SCDisplay,
+        cropRect: CGRect?,
+        configuration: CaptureConfiguration,
+        outputURL: URL
+    ) async throws
+
+    func startRecording(
+        window: SCWindow,
+        configuration: CaptureConfiguration,
+        outputURL: URL
+    ) async throws
+
+    func stopRecording() async throws -> URL
+}
+
+// MARK: - Implementation
+
+final class ScreenRecorder: NSObject, ObservableObject, ScreenRecorderProtocol {
     private var stream: SCStream?
     private var assetWriter: AVAssetWriter?
     private var videoInput: AVAssetWriterInput?

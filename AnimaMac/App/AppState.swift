@@ -2,6 +2,21 @@ import SwiftUI
 import ScreenCaptureKit
 import AppKit
 
+// MARK: - Overlay Controller Protocol
+
+@MainActor
+protocol OverlayControllerProtocol {
+    func showOverlay(
+        for display: SCDisplay,
+        onComplete: @escaping (CGRect, SCDisplay) -> Void,
+        onCancel: @escaping () -> Void
+    )
+}
+
+extension OverlayWindowController: OverlayControllerProtocol {}
+
+// MARK: - App State
+
 @MainActor
 final class AppState: ObservableObject {
     // MARK: - Recording State
@@ -32,17 +47,37 @@ final class AppState: ObservableObject {
     @Published var lastError: Error?
     @Published var showingError = false
 
-    // MARK: - Components
-    private(set) var screenRecorder: ScreenRecorder?
-    private(set) var gifExporter: GIFExporter?
-    private(set) var recordingLibrary: RecordingLibrary?
-    private var overlayController: OverlayWindowController?
+    // MARK: - Components (with protocol types for testability)
+    private(set) var screenRecorder: ScreenRecorderProtocol?
+    private(set) var gifExporter: GIFExporterProtocol?
+    private(set) var recordingLibrary: RecordingLibraryProtocol?
+    private var overlayController: OverlayControllerProtocol?
 
     private var recordingTimer: Timer?
 
-    init() {
-        Task {
-            await setupComponents()
+    // MARK: - Initialization
+
+    init(
+        screenRecorder: ScreenRecorderProtocol? = nil,
+        gifExporter: GIFExporterProtocol? = nil,
+        recordingLibrary: RecordingLibraryProtocol? = nil,
+        overlayController: OverlayControllerProtocol? = nil
+    ) {
+        self.screenRecorder = screenRecorder
+        self.gifExporter = gifExporter
+        self.recordingLibrary = recordingLibrary
+        self.overlayController = overlayController
+
+        // If no dependencies injected, set up defaults
+        if screenRecorder == nil && gifExporter == nil && recordingLibrary == nil {
+            Task {
+                await setupComponents()
+            }
+        } else {
+            // Load recordings from injected library
+            if let library = recordingLibrary {
+                recordings = library.loadRecordings()
+            }
         }
     }
 

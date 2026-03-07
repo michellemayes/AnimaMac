@@ -1,7 +1,22 @@
 import Foundation
 import AVFoundation
 
-final class GIFExporter {
+// MARK: - Protocol
+
+protocol GIFExporterProtocol {
+    func export(
+        videoURL: URL,
+        to outputURL: URL,
+        settings: ExportSettings,
+        progressHandler: @escaping (Double) -> Void
+    ) async throws
+
+    func buildFilterChain(settings: ExportSettings) -> String
+}
+
+// MARK: - Implementation
+
+final class GIFExporter: GIFExporterProtocol {
     private let ffmpeg = FFmpegManager.shared
 
     func export(
@@ -44,7 +59,7 @@ final class GIFExporter {
         }
     }
 
-    private func buildFilterChain(settings: ExportSettings) -> String {
+    func buildFilterChain(settings: ExportSettings) -> String {
         // Two-pass palette generation for high quality GIFs
         // Input -> fps -> scale -> split -> palettegen + paletteuse
 
