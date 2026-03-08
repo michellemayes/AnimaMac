@@ -156,9 +156,9 @@ struct StorageSettingsTab: View {
 struct AboutTab: View {
     var body: some View {
         VStack(spacing: 16) {
-            Image(systemName: "record.circle.fill")
-                .font(.system(size: 64))
-                .foregroundStyle(.red)
+            Image(nsImage: NSApp.applicationIconImage)
+                .resizable()
+                .frame(width: 128, height: 128)
 
             Text("AnimaMac")
                 .font(.title)
@@ -167,7 +167,7 @@ struct AboutTab: View {
             Text("Version 1.0.0")
                 .foregroundStyle(.secondary)
 
-            Text("A simple GIF recorder for macOS")
+            Text("A native GIF recorder for macOS")
                 .foregroundStyle(.secondary)
 
             Spacer()

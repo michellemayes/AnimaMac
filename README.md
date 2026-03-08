@@ -34,13 +34,10 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/AnimaMac.git
+git clone https://github.com/michellemayes/AnimaMac.git
 cd AnimaMac
 
-# Build with Swift
-swift build
-
-# Or open in Xcode
+# Open in Xcode
 open AnimaMac.xcodeproj
 ```
 
@@ -50,6 +47,8 @@ open AnimaMac.xcodeproj
 2. Select your development team for signing
 3. Build and run (⌘R)
 4. Grant Screen Recording permission when prompted
+
+> **Note:** `swift build` compiles the core library for testing but does not produce the full app with icons and resources. Use Xcode to build and run the app.
 
 ## Usage
 
